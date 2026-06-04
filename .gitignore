@@ -6,6 +6,11 @@ dist/
 build/
 venv/
 .venv/
+myenv/
+
+# Backend runtime
+backend/logs/
+backend/.backend.pid
 *.db
 uploads/
 
