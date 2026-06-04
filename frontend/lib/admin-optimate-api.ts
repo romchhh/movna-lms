@@ -163,7 +163,20 @@ async function adminFetch<T>(path: string, init?: RequestInit): Promise<T> {
   if (!res.ok) {
     const err = await res.json().catch(() => ({ detail: res.statusText }))
     const detail = err.detail
-    throw new Error(typeof detail === 'string' ? detail : 'Помилка Optimate')
+    const message = typeof detail === 'string' ? detail : 'Помилка Optimate'
+    if (
+      res.status === 401 &&
+      typeof document !== 'undefined' &&
+      (message === 'Invalid token' || message === 'User not found')
+    ) {
+      document.cookie = 'token=; path=/; max-age=0'
+      const hint =
+        message === 'Invalid token'
+          ? 'Сесія недійсна. Увійдіть знову (на сервері має бути стабільний SECRET_KEY).'
+          : 'Користувача не знайдено. Запустіть seed.py на сервері або увійдіть знову.'
+      window.location.href = `/auth/login?error=${encodeURIComponent(hint)}`
+    }
+    throw new Error(message)
   }
 
   if (res.status === 204) return undefined as T

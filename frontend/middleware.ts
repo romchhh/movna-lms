@@ -1,12 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
 
-function decodeRole(token: string): string | null {
+function decodeTokenPayload(token: string): { role: string | null; expired: boolean } {
   try {
     const [, payload] = token.split('.')
     const decoded = JSON.parse(Buffer.from(payload, 'base64').toString())
-    return decoded?.role ?? null
+    const exp = typeof decoded?.exp === 'number' ? decoded.exp : 0
+    const expired = exp > 0 && Date.now() / 1000 > exp
+    const role = typeof decoded?.role === 'string' ? decoded.role : null
+    return { role, expired }
   } catch {
-    return null
+    return { role: null, expired: true }
   }
 }
 
@@ -23,8 +26,8 @@ function clearTokenCookie(response: NextResponse) {
 export function middleware(request: NextRequest) {
   const token = request.cookies.get('token')?.value
   const path = request.nextUrl.pathname
-  const role = token ? decodeRole(token) : null
-  const hasValidToken = Boolean(token && role)
+  const { role, expired } = token ? decodeTokenPayload(token) : { role: null, expired: false }
+  const hasValidToken = Boolean(token && role && !expired)
 
   const isPublic = path.startsWith('/auth')
 
