@@ -1,0 +1,60 @@
+"""Labels and constants for Optimate API enums."""
+
+PRODUCT_TYPE_LABELS: dict[int, str] = {
+    1: "Індивідуальні",
+    2: "Групові",
+    3: "Speaking Club",
+    4: "Парні",
+}
+
+TRANSACTION_TYPE_LABELS: dict[int, str] = {
+    1: "Купівля пакету",
+    2: "Скасування списання",
+    3: "Пробачення боргу",
+    4: "Згорання уроків",
+    5: "Списання за урок",
+    6: "Погашення боргу",
+    7: "Списання школою",
+    8: "Повернення оплати",
+}
+
+# Types that add lessons to balance
+TRANSACTION_CREDIT_TYPES = {1, 2, 3, 6, 8}
+TRANSACTION_DEBIT_TYPES = {4, 5, 7}
+
+EVENT_TYPE_LABELS: dict[int, str] = {
+    1: "Урок",
+}
+
+COMPLETION_LABELS: dict[str, str] = {
+    "completed": "Проведено",
+    "cancelled": "Скасовано",
+    "planned": "Заплановано",
+}
+
+SCHEDULE_DAY_LABELS: dict[int, str] = {
+    1: "Понеділок",
+    2: "Вівторок",
+    3: "Середа",
+    4: "Четвер",
+    5: "П'ятниця",
+    6: "Субота",
+    7: "Неділя",
+}
+
+SCHEDULE_DAY_SHORT: dict[int, str] = {
+    1: "Пн",
+    2: "Вт",
+    3: "Ср",
+    4: "Чт",
+    5: "Пт",
+    6: "Сб",
+    7: "Нд",
+}
+
+PRODUCT_TYPE_COLORS: dict[int, str] = {
+    1: "individual",
+    2: "group",
+    3: "speaking_club",
+    4: "pair",
+}

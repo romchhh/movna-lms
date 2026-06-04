@@ -1,0 +1,214 @@
+from datetime import datetime
+from typing import Optional
+
+from pydantic import BaseModel
+
+
+class CacheMeta(BaseModel):
+    cached: bool
+    synced_at: datetime
+
+
+class ProductBalanceOut(BaseModel):
+    product_id: str
+    product_name: str
+    product_type: int
+    product_type_label: str
+    lessons_remaining: float
+    lessons_total: float
+    lessons_used: float
+    price_per_lesson: Optional[float] = None
+
+
+class TransactionOut(BaseModel):
+    id: str
+    type: int
+    type_label: str
+    amount: float
+    lesson_count: float
+    description: Optional[str] = None
+    transaction_date: Optional[str] = None
+    created_at: Optional[str] = None
+    product_id: Optional[str] = None
+    product_name: Optional[str] = None
+    product_type: Optional[int] = None
+    is_credit: bool
+
+
+class PaginatedTransactionsOut(BaseModel):
+    data: list[TransactionOut]
+    total: int
+    page: int
+    page_size: int
+    cache: CacheMeta
+
+
+class EventOut(BaseModel):
+    id: str
+    event_type: int
+    starts_at: str
+    ends_at: str
+    duration: int
+    product_id: Optional[str] = None
+    product_name: Optional[str] = None
+    product_type: Optional[int] = None
+    product_type_label: Optional[str] = None
+    teacher_name: Optional[str] = None
+    is_trial: bool
+    is_completed: Optional[bool] = None
+    completion_label: str
+    schedule_class: str
+    student_names: list[str] = []
+    student_ids: list[str] = []
+    teacher_names: list[str] = []
+    teacher_ids: list[str] = []
+
+
+class ScheduleSlotOut(BaseModel):
+    start_time: str
+    end_time: str
+
+
+class ScheduleDayOut(BaseModel):
+    day: int
+    day_label: str
+    day_short: str
+    slots: list[ScheduleSlotOut]
+
+
+class TeacherScheduleOut(BaseModel):
+    id: str
+    start_date: Optional[str] = None
+    timezone: str
+    days: list[ScheduleDayOut]
+
+
+class TeacherSchedulesResponse(BaseModel):
+    data: list[TeacherScheduleOut]
+    cache: CacheMeta
+
+
+class PaginatedEventsOut(BaseModel):
+    data: list[EventOut]
+    total: int
+    date_from: str
+    date_to: str
+    cache: CacheMeta
+
+
+class TeacherStudentOut(BaseModel):
+    id: str
+    full_name: str
+    status: int
+    status_label: str
+    email: Optional[str] = None
+    phone: Optional[str] = None
+    skill_level_label: Optional[str] = None
+    remaining_lessons: float = 0
+    planned_lessons: float = 0
+    completed_lessons: float = 0
+    product_names: list[str] = []
+
+
+class PaginatedTeacherStudentsOut(BaseModel):
+    data: list[TeacherStudentOut]
+    total: int
+    page: int
+    page_size: int
+    cache: CacheMeta
+
+
+class TeacherStudentDetailResponse(BaseModel):
+    data: dict
+    cache: CacheMeta
+
+
+class TeacherGroupStudentOut(BaseModel):
+    id: str
+    full_name: str
+    status: int
+    status_label: str
+    email: Optional[str] = None
+    phone: Optional[str] = None
+
+
+class TeacherGroupOut(BaseModel):
+    id: str
+    name: str
+    status: int
+    status_label: str
+    duration: int = 0
+    max_student_count: int = 0
+    student_count: int = 0
+    schedule_label: str = "—"
+    level_label: Optional[str] = None
+    product_name: Optional[str] = None
+    product_type: Optional[int] = None
+    product_type_label: str = "Група"
+    chat_url: Optional[str] = None
+    start_date: Optional[str] = None
+    end_date: Optional[str] = None
+    planned_lessons: int = 0
+    completed_lessons: int = 0
+    attendance_percentage: float = 0
+    students: list[TeacherGroupStudentOut] = []
+
+
+class TeacherGroupsResponse(BaseModel):
+    data: list[TeacherGroupOut]
+    total: int
+    cache: CacheMeta
+
+
+class BalancesResponse(BaseModel):
+    data: list[ProductBalanceOut]
+    cache: CacheMeta
+
+
+class StudentOverviewOut(BaseModel):
+    balances: list[ProductBalanceOut]
+    upcoming_events: list[EventOut]
+    recent_transactions: list[TransactionOut]
+    total_lessons_remaining: float
+    synced_at: datetime
+    cache: CacheMeta
+
+
+class BirthDateOut(BaseModel):
+    day: int
+    month: int
+    year: int
+
+
+class StudentProfileOut(BaseModel):
+    id: str
+    first_name: str
+    last_name: str
+    full_name: str
+    email: Optional[str] = None
+    phone: Optional[str] = None
+    chat_url: Optional[str] = None
+    birth_date: Optional[BirthDateOut] = None
+
+
+class StudentProfileUpdate(BaseModel):
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    chat_url: Optional[str] = None
+    birth_date: Optional[BirthDateOut] = None
+
+
+class TeacherProfileOut(BaseModel):
+    id: str
+    first_name: str
+    last_name: str
+    full_name: str
+    email: Optional[str] = None
+    phone: Optional[str] = None
+    description: Optional[str] = None
+
+
+class TeacherProfileUpdate(BaseModel):
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    description: Optional[str] = None

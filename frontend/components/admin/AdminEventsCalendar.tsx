@@ -1,0 +1,236 @@
+'use client'
+
+import { AdminOptimateSyncBar } from '@/components/admin/AdminOptimateSyncBar'
+import { EventsCalendar } from '@/components/calendar/EventsCalendar'
+import { Card } from '@/components/shared/UI'
+import { AdminEvent, adminOptimateApi } from '@/lib/admin-optimate-api'
+import { toCalendarEvent } from '@/lib/calendar-types'
+import type { CacheMeta } from '@/lib/optimate-api'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+
+type RangeFilter = 'today' | 'fortnight' | 'month'
+type StatusFilter = 'all' | 'planned' | 'completed' | 'cancelled'
+
+const RANGE_PARAMS: Record<RangeFilter, { back: number; forward: number; label: string }> = {
+  today: { back: 0, forward: 1, label: 'Сьогодні' },
+  fortnight: { back: 1, forward: 14, label: '2 тижні' },
+  month: { back: 7, forward: 45, label: 'Місяць' },
+}
+
+const STATUS_API: Record<Exclude<StatusFilter, 'all'>, string> = {
+  planned: '3',
+  completed: '1',
+  cancelled: '2',
+}
+
+function mapEvent(e: AdminEvent) {
+  return toCalendarEvent({
+    id: e.id,
+    starts_at: e.starts_at,
+    ends_at: e.ends_at,
+    duration: e.duration,
+    event_type_label: e.event_type_label,
+    product_name: e.product_name,
+    product_type_label: e.product_type_label,
+    student_names: e.student_names,
+    student_ids: e.student_ids,
+    teacher_names: e.teacher_names,
+    teacher_ids: e.teacher_ids,
+    completion_label: e.completion_label,
+    product_type: e.product_type,
+    is_trial: e.is_trial,
+  })
+}
+
+interface AdminEventsCalendarProps {
+  embed?: boolean
+  title?: string
+  showRangeFilters?: boolean
+  showStatusFilters?: boolean
+  showSyncBar?: boolean
+  defaultRange?: RangeFilter
+  defaultView?: 'week' | 'month' | 'agenda'
+}
+
+export function AdminEventsCalendar({
+  embed = false,
+  title,
+  showRangeFilters = true,
+  showStatusFilters = false,
+  showSyncBar = true,
+  defaultRange = 'fortnight',
+  defaultView = 'week',
+}: AdminEventsCalendarProps) {
+  const [events, setEvents] = useState<AdminEvent[]>([])
+  const [total, setTotal] = useState(0)
+  const [cache, setCache] = useState<CacheMeta | null>(null)
+  const [range, setRange] = useState<RangeFilter>(defaultRange)
+  const [status, setStatus] = useState<StatusFilter>('all')
+  const [teacherId, setTeacherId] = useState('')
+  const [studentId, setStudentId] = useState('')
+  const [teachers, setTeachers] = useState<{ id: string; name: string }[]>([])
+  const [students, setStudents] = useState<{ id: string; name: string }[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      try {
+        const [tRes, sRes] = await Promise.all([
+          adminOptimateApi.teachers(1, 200),
+          adminOptimateApi.students(1, 200),
+        ])
+        if (cancelled) return
+        setTeachers(
+          tRes.data
+            .map(t => ({ id: t.id, name: t.full_name }))
+            .sort((a, b) => a.name.localeCompare(b.name, 'uk')),
+        )
+        setStudents(
+          sRes.data
+            .map(s => ({ id: s.id, name: s.full_name }))
+            .sort((a, b) => a.name.localeCompare(b.name, 'uk')),
+        )
+      } catch {
+        /* фільтри опційні */
+      }
+    })()
+    return () => { cancelled = true }
+  }, [])
+
+  const load = useCallback(async (refresh = false) => {
+    setLoading(true)
+    setError('')
+    try {
+      const params = RANGE_PARAMS[range]
+      const completionStatus = status === 'all' ? '' : STATUS_API[status]
+      const res = await adminOptimateApi.eventsAll(
+        params.back,
+        params.forward,
+        completionStatus,
+        refresh,
+        teacherId,
+        studentId,
+      )
+      setEvents(res.data)
+      setTotal(res.total)
+      setCache(res.cache)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Помилка')
+    } finally {
+      setLoading(false)
+    }
+  }, [range, status, teacherId, studentId])
+
+  useEffect(() => {
+    load()
+  }, [load])
+
+  const calendarEvents = useMemo(() => events.map(mapEvent), [events])
+
+  const filters = (
+    <div className="admin-filters admin-cal-filters">
+      {showRangeFilters && (Object.keys(RANGE_PARAMS) as RangeFilter[]).map(f => (
+        <button
+          key={f}
+          type="button"
+          onClick={() => setRange(f)}
+          className="btn btn-sm"
+          style={{
+            background: range === f ? 'var(--rl)' : 'var(--bg2)',
+            color: range === f ? 'var(--rd)' : 'var(--tx2)',
+            border: `.5px solid ${range === f ? 'var(--rd)' : 'var(--bd2)'}`,
+          }}
+        >
+          {RANGE_PARAMS[f].label}
+        </button>
+      ))}
+
+      {showStatusFilters && (['all', 'planned', 'completed', 'cancelled'] as const).map(f => (
+        <button
+          key={f}
+          type="button"
+          onClick={() => setStatus(f)}
+          className="btn btn-sm"
+          style={{
+            background: status === f ? 'var(--pl)' : 'var(--bg2)',
+            color: status === f ? 'var(--pd)' : 'var(--tx2)',
+            border: `.5px solid ${status === f ? 'var(--pm)' : 'var(--bd2)'}`,
+          }}
+        >
+          {{ all: 'Всі', planned: 'Заплановані', completed: 'Проведені', cancelled: 'Скасовані' }[f]}
+        </button>
+      ))}
+
+      <label className="admin-cal-select-wrap">
+        <span className="admin-cal-select-label">Викладач</span>
+        <select
+          className="admin-cal-select"
+          value={teacherId}
+          onChange={e => setTeacherId(e.target.value)}
+        >
+          <option value="">Усі викладачі</option>
+          {teachers.map(t => (
+            <option key={t.id} value={t.id}>{t.name}</option>
+          ))}
+        </select>
+      </label>
+
+      <label className="admin-cal-select-wrap">
+        <span className="admin-cal-select-label">Учень</span>
+        <select
+          className="admin-cal-select"
+          value={studentId}
+          onChange={e => setStudentId(e.target.value)}
+        >
+          <option value="">Усі учні</option>
+          {students.map(s => (
+            <option key={s.id} value={s.id}>{s.name}</option>
+          ))}
+        </select>
+      </label>
+
+      {!loading && total > events.length && (
+        <span className="admin-cal-hint">
+          Показано {events.length} з {total}
+        </span>
+      )}
+    </div>
+  )
+
+  const calendar = (
+    <EventsCalendar
+      events={calendarEvents}
+      loading={loading}
+      emptyLabel="Подій не знайдено"
+      defaultView={defaultView}
+      accent="admin"
+      embed={embed}
+      entityLinks="admin"
+      showParticipants
+    />
+  )
+
+  if (embed) {
+    return (
+      <>
+        {error && <div className="alert">{error}</div>}
+        {showSyncBar && <AdminOptimateSyncBar cache={cache} onRefreshed={() => load(true)} />}
+        {filters}
+        {calendar}
+      </>
+    )
+  }
+
+  return (
+    <>
+      {error && <div className="alert">{error}</div>}
+      {showSyncBar && <AdminOptimateSyncBar cache={cache} onRefreshed={() => load(true)} />}
+      {filters}
+      <Card title={title}>
+        {calendar}
+      </Card>
+    </>
+  )
+}
