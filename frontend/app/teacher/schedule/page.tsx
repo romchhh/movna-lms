@@ -8,7 +8,7 @@ import {
   type TeacherSchedule,
   teacherOptimateApi,
 } from '@/lib/teacher-optimate-api'
-import { toCalendarEvent } from '@/lib/calendar-types'
+import { optimateEventToCalendarEvent } from '@/lib/optimate-api'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 
 export default function TeacherSchedulePage() {
@@ -39,20 +39,7 @@ export default function TeacherSchedulePage() {
   }, [load])
 
   const calendarEvents = useMemo(
-    () => events.map(e => toCalendarEvent({
-      id: e.id,
-      starts_at: e.starts_at,
-      ends_at: e.ends_at,
-      duration: e.duration,
-      product_name: e.product_name,
-      product_type_label: e.product_type_label,
-      student_names: e.student_names,
-      student_ids: e.student_ids,
-      completion_label: e.completion_label,
-      schedule_class: e.schedule_class,
-      product_type: e.product_type,
-      is_trial: e.is_trial,
-    })),
+    () => events.map(optimateEventToCalendarEvent),
     [events],
   )
 
@@ -84,6 +71,9 @@ export default function TeacherSchedulePage() {
           emptyLabel="Уроків не знайдено"
           defaultView="week"
           entityLinks="teacher"
+          showParticipants
+          showFormatLegend
+          enableHomework
         />
       </Card>
     </>

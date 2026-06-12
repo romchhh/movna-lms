@@ -1,5 +1,6 @@
 'use client'
 
+import { homeForRole, setSession } from '@/lib/auth'
 import { Suspense, useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 
@@ -10,6 +11,7 @@ function GoogleCallbackInner() {
 
   useEffect(() => {
     const accessToken = searchParams.get('access_token')
+    const refreshToken = searchParams.get('refresh_token')
     const role = searchParams.get('role')
     const err = searchParams.get('error')
 
@@ -23,11 +25,13 @@ function GoogleCallbackInner() {
       return
     }
 
-    document.cookie = `token=${accessToken}; path=/; max-age=${60 * 60 * 24}`
+    if (refreshToken) {
+      setSession(accessToken, refreshToken, true)
+    } else {
+      setSession(accessToken, '', true)
+    }
 
-    if (role === 'admin') router.replace('/admin')
-    else if (role === 'teacher') router.replace('/teacher')
-    else router.replace('/student')
+    router.replace(homeForRole(role))
   }, [router, searchParams])
 
   if (error) {

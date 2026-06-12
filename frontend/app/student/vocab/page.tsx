@@ -37,7 +37,7 @@ export default function StudentVocab() {
         ))}
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 10 }}>
+      <div className="vocab-grid">
         {filtered.map((w, i) => (
           <div key={i}
             onClick={() => setFlip(p => { const n = new Set(p); n.has(i) ? n.delete(i) : n.add(i); return n })}

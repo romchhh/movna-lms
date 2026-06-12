@@ -3,8 +3,7 @@
 import { AdminOptimateSyncBar } from '@/components/admin/AdminOptimateSyncBar'
 import { EventsCalendar } from '@/components/calendar/EventsCalendar'
 import { Card } from '@/components/shared/UI'
-import { AdminEvent, adminOptimateApi } from '@/lib/admin-optimate-api'
-import { toCalendarEvent } from '@/lib/calendar-types'
+import { AdminEvent, adminEventToCalendarEvent, adminOptimateApi } from '@/lib/admin-optimate-api'
 import type { CacheMeta } from '@/lib/optimate-api'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 
@@ -23,25 +22,6 @@ const STATUS_API: Record<Exclude<StatusFilter, 'all'>, string> = {
   cancelled: '2',
 }
 
-function mapEvent(e: AdminEvent) {
-  return toCalendarEvent({
-    id: e.id,
-    starts_at: e.starts_at,
-    ends_at: e.ends_at,
-    duration: e.duration,
-    event_type_label: e.event_type_label,
-    product_name: e.product_name,
-    product_type_label: e.product_type_label,
-    student_names: e.student_names,
-    student_ids: e.student_ids,
-    teacher_names: e.teacher_names,
-    teacher_ids: e.teacher_ids,
-    completion_label: e.completion_label,
-    product_type: e.product_type,
-    is_trial: e.is_trial,
-  })
-}
-
 interface AdminEventsCalendarProps {
   embed?: boolean
   title?: string
@@ -50,6 +30,7 @@ interface AdminEventsCalendarProps {
   showSyncBar?: boolean
   defaultRange?: RangeFilter
   defaultView?: 'week' | 'month' | 'agenda'
+  showFormatLegend?: boolean
 }
 
 export function AdminEventsCalendar({
@@ -60,6 +41,7 @@ export function AdminEventsCalendar({
   showSyncBar = true,
   defaultRange = 'fortnight',
   defaultView = 'week',
+  showFormatLegend,
 }: AdminEventsCalendarProps) {
   const [events, setEvents] = useState<AdminEvent[]>([])
   const [total, setTotal] = useState(0)
@@ -127,7 +109,7 @@ export function AdminEventsCalendar({
     load()
   }, [load])
 
-  const calendarEvents = useMemo(() => events.map(mapEvent), [events])
+  const calendarEvents = useMemo(() => events.map(adminEventToCalendarEvent), [events])
 
   const filters = (
     <div className="admin-filters admin-cal-filters">
@@ -209,6 +191,7 @@ export function AdminEventsCalendar({
       embed={embed}
       entityLinks="admin"
       showParticipants
+      showFormatLegend={showFormatLegend ?? !embed}
     />
   )
 

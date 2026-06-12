@@ -1,9 +1,8 @@
-import { getToken } from './auth'
+import { apiFetch, withRefreshQuery } from './api-fetch'
+import { mapOptimateEventToCalendar } from './calendar-types'
+import type { CacheMeta } from './optimate-types'
 
-export interface CacheMeta {
-  cached: boolean
-  synced_at: string
-}
+export type { CacheMeta } from './optimate-types'
 
 export interface ProductBalance {
   product_id: string
@@ -106,34 +105,8 @@ export type StudentProfileUpdate = {
   birth_date?: BirthDate | null
 }
 
-async function optimateFetch<T>(path: string, init?: RequestInit): Promise<T> {
-  const token = getToken()
-  if (!token) throw new Error('Не авторизовано')
-
-  const res = await fetch(path, {
-    ...init,
-    headers: {
-      Authorization: `Bearer ${token}`,
-      ...(init?.body ? { 'Content-Type': 'application/json' } : {}),
-      ...(init?.headers as Record<string, string> | undefined),
-    },
-  })
-
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({ detail: res.statusText }))
-    const detail = err.detail
-    throw new Error(typeof detail === 'string' ? detail : 'Помилка завантаження даних Optimate')
-  }
-
-  if (res.status === 204) return undefined as T
-  return res.json()
-}
-
-function withRefresh(path: string, refresh?: boolean) {
-  if (!refresh) return path
-  const sep = path.includes('?') ? '&' : '?'
-  return `${path}${sep}refresh=true`
-}
+const optimateFetch = <T>(path: string, init?: RequestInit) =>
+  apiFetch<T>(path, init, { errorMessage: 'Помилка завантаження даних Optimate' })
 
 export function profileInitials(firstName: string, lastName: string) {
   const a = (firstName || '').trim().charAt(0)
@@ -149,16 +122,16 @@ export const optimateApi = {
       body: JSON.stringify(data),
     }),
   overview: (refresh?: boolean) =>
-    optimateFetch<StudentOverview>(withRefresh('/api/student/optimate/overview', refresh)),
+    optimateFetch<StudentOverview>(withRefreshQuery('/api/student/optimate/overview', refresh)),
   balances: (refresh?: boolean) =>
-    optimateFetch<BalancesResponse>(withRefresh('/api/student/optimate/balances', refresh)),
+    optimateFetch<BalancesResponse>(withRefreshQuery('/api/student/optimate/balances', refresh)),
   transactions: (page = 1, pageSize = 20, refresh?: boolean) =>
     optimateFetch<PaginatedTransactions>(
-      withRefresh(`/api/student/optimate/transactions?page=${page}&page_size=${pageSize}`, refresh),
+      withRefreshQuery(`/api/student/optimate/transactions?page=${page}&page_size=${pageSize}`, refresh),
     ),
   events: (daysBack = 7, daysForward = 30, refresh?: boolean) =>
     optimateFetch<PaginatedEvents>(
-      withRefresh(`/api/student/optimate/events?days_back=${daysBack}&days_forward=${daysForward}`, refresh),
+      withRefreshQuery(`/api/student/optimate/events?days_back=${daysBack}&days_forward=${daysForward}`, refresh),
     ),
   refreshAll: () =>
     optimateFetch<void>('/api/student/optimate/refresh', { method: 'POST' }),
@@ -195,36 +168,12 @@ export function formatOptimateDate(iso: string | null | undefined, withTime = fa
   }).format(date)
 }
 
-export function formatEventTimeRange(startsAt: string, endsAt: string) {
-  const start = new Date(startsAt)
-  const end = new Date(endsAt)
-  if (Number.isNaN(start.getTime())) return '—'
-  const timeFmt = new Intl.DateTimeFormat('uk-UA', { hour: '2-digit', minute: '2-digit' })
-  if (Number.isNaN(end.getTime())) return timeFmt.format(start)
-  return `${timeFmt.format(start)}–${timeFmt.format(end)}`
-}
-
-export function groupEventsByDay(events: StudentEvent[]) {
-  const map = new Map<string, StudentEvent[]>()
-  for (const event of events) {
-    const key = event.starts_at.slice(0, 10)
-    const list = map.get(key) ?? []
-    list.push(event)
-    map.set(key, list)
-  }
-  return [...map.entries()].sort(([a], [b]) => a.localeCompare(b))
-}
-
-export function isEventSoon(startsAt: string, withinMinutes = 15) {
-  const start = new Date(startsAt).getTime()
-  const now = Date.now()
-  const diff = start - now
-  return diff >= 0 && diff <= withinMinutes * 60 * 1000
-}
-
 export function isEventActive(startsAt: string, endsAt: string) {
   const now = Date.now()
   const start = new Date(startsAt).getTime()
   const end = new Date(endsAt).getTime()
   return now >= start && now <= end
 }
+
+/** @deprecated Use `mapOptimateEventToCalendar` from `calendar-types`. */
+export const optimateEventToCalendarEvent = mapOptimateEventToCalendar

@@ -20,7 +20,7 @@ class Base(DeclarativeBase):
 async def init_db():
     async with engine.begin() as conn:
         # Import all models so Base knows about them
-        from app.models import user, course, homework, schedule  # noqa
+        from app.models import user, course, homework, schedule, lesson_request, event_homework  # noqa
         await conn.run_sync(Base.metadata.create_all)
         await conn.run_sync(_ensure_user_columns)
 

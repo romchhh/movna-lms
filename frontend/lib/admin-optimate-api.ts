@@ -1,7 +1,11 @@
-import { getToken } from './auth'
-import type { CacheMeta } from './optimate-api'
+import { apiFetch, withRefreshQuery } from './api-fetch'
+import { mapOptimateEventToCalendar } from './calendar-types'
+import { zipStudentTeachers } from './optimate-participants'
+import type { CacheMeta, LessonFormatBreakdown } from './optimate-types'
+import type { TeacherLessonStats } from './teacher-optimate-api'
 
 export type { CacheMeta }
+export { zipStudentTeachers }
 
 export interface ProductSummary {
   product_id: string
@@ -112,6 +116,7 @@ export interface AdminEvent {
   student_ids: string[]
   teacher_names: string[]
   teacher_ids: string[]
+  schedule_class?: string
 }
 
 export interface PaginatedEvents {
@@ -127,9 +132,22 @@ export interface PaginatedEvents {
 export interface AdminOverview {
   students_total: number
   teachers_total: number
+  active_students: number
+  new_students: number
+  paused_students: number
+  low_balance_count: number
   events_today: number
   events_week: number
   unmarked_lessons: number
+  pending_requests: number
+  month_label: string
+  completed_this_month: number
+  planned_this_month: number
+  cancelled_this_month: number
+  completed_today: number
+  hours_completed_month: number
+  format_breakdown: LessonFormatBreakdown
+  top_teachers_month: { id: string; full_name: string; lessons: number }[]
   low_balance_students: {
     id: string
     full_name: string
@@ -144,61 +162,27 @@ export interface AdminOverview {
     unmarked_lesson_count?: number | null
   }[]
   upcoming_events: AdminEvent[]
-  week_activity: { day: string; label: string; count: number }[]
+  week_activity: { day: string; label: string; count: number; completed: number; planned: number }[]
   cache: CacheMeta
 }
 
-async function adminFetch<T>(path: string, init?: RequestInit): Promise<T> {
-  const token = getToken()
-  if (!token) throw new Error('Не авторизовано')
-
-  const res = await fetch(path, {
-    ...init,
-    headers: {
-      Authorization: `Bearer ${token}`,
-      ...(init?.headers as Record<string, string> | undefined),
-    },
+const adminFetch = <T>(path: string, init?: RequestInit) =>
+  apiFetch<T>(path, init, {
+    errorMessage: 'Помилка Optimate',
+    redirectOnInvalidSession: true,
   })
-
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({ detail: res.statusText }))
-    const detail = err.detail
-    const message = typeof detail === 'string' ? detail : 'Помилка Optimate'
-    if (
-      res.status === 401 &&
-      typeof document !== 'undefined' &&
-      (message === 'Invalid token' || message === 'User not found')
-    ) {
-      document.cookie = 'token=; path=/; max-age=0'
-      const hint =
-        message === 'Invalid token'
-          ? 'Сесія недійсна. Увійдіть знову (на сервері має бути стабільний SECRET_KEY).'
-          : 'Користувача не знайдено. Запустіть seed.py на сервері або увійдіть знову.'
-      window.location.href = `/auth/login?error=${encodeURIComponent(hint)}`
-    }
-    throw new Error(message)
-  }
-
-  if (res.status === 204) return undefined as T
-  return res.json()
-}
-
-function withRefresh(path: string, refresh?: boolean) {
-  if (!refresh) return path
-  return `${path}${path.includes('?') ? '&' : '?'}refresh=true`
-}
 
 export const adminOptimateApi = {
   students: (page = 1, pageSize = 50, search = '', refresh?: boolean) =>
     adminFetch<PaginatedStudents>(
-      withRefresh(
+      withRefreshQuery(
         `/api/admin/optimate/students?page=${page}&page_size=${pageSize}&search=${encodeURIComponent(search)}`,
         refresh,
       ),
     ),
   studentDetail: (id: string, refresh?: boolean) =>
     adminFetch<{ data: StudentDetail; cache: CacheMeta }>(
-      withRefresh(`/api/admin/optimate/students/${id}`, refresh),
+      withRefreshQuery(`/api/admin/optimate/students/${id}`, refresh),
     ),
   studentAccount: (id: string) =>
     adminFetch<StudentAccount>(`/api/admin/optimate/students/${id}/account`),
@@ -226,14 +210,21 @@ export const adminOptimateApi = {
     }),
   teachers: (page = 1, pageSize = 50, search = '', refresh?: boolean) =>
     adminFetch<PaginatedTeachers>(
-      withRefresh(
+      withRefreshQuery(
         `/api/admin/optimate/teachers?page=${page}&page_size=${pageSize}&search=${encodeURIComponent(search)}`,
         refresh,
       ),
     ),
   teacherDetail: (id: string, refresh?: boolean) =>
     adminFetch<{ data: TeacherDetail; cache: CacheMeta }>(
-      withRefresh(`/api/admin/optimate/teachers/${id}`, refresh),
+      withRefreshQuery(`/api/admin/optimate/teachers/${id}`, refresh),
+    ),
+  teacherLessonStats: (id: string, daysBack = 365, daysForward = 90, refresh?: boolean) =>
+    adminFetch<TeacherLessonStats>(
+      withRefreshQuery(
+        `/api/admin/optimate/teachers/${encodeURIComponent(id)}/lesson-stats?days_back=${daysBack}&days_forward=${daysForward}`,
+        refresh,
+      ),
     ),
   events: (
     daysBack = 1,
@@ -255,7 +246,7 @@ export const adminOptimateApi = {
     if (teacherId) params.set('teacher_id', teacherId)
     if (studentId) params.set('student_id', studentId)
     return adminFetch<PaginatedEvents>(
-      withRefresh(`/api/admin/optimate/events?${params}`, refresh),
+      withRefreshQuery(`/api/admin/optimate/events?${params}`, refresh),
     )
   },
   eventsAll: async (
@@ -305,7 +296,7 @@ export const adminOptimateApi = {
     }
   },
   overview: (refresh?: boolean) =>
-    adminFetch<AdminOverview>(withRefresh('/api/admin/optimate/overview', refresh)),
+    adminFetch<AdminOverview>(withRefreshQuery('/api/admin/optimate/overview', refresh)),
   refreshAll: () => adminFetch<void>('/api/admin/optimate/refresh', { method: 'POST' }),
 }
 
@@ -373,27 +364,5 @@ export function normalizeOptimateNote(raw: unknown): OptimateNote | null {
   }
 }
 
-export function statusBadgeVariant(status: number): 'teal' | 'gray' | 'amber' | 'red' | 'purple' {
-  if (status === 1) return 'teal'
-  if (status === 2) return 'gray'
-  if (status === 3) return 'purple'
-  if (status === 4) return 'amber'
-  return 'gray'
-}
-
-export function zipStudentTeachers(student: {
-  teacher_ids?: string[]
-  teacher_names?: string[]
-}): { id: string; name: string }[] {
-  const ids = student.teacher_ids ?? []
-  const names = student.teacher_names ?? []
-  const count = Math.max(ids.length, names.length)
-  const out: { id: string; name: string }[] = []
-  for (let i = 0; i < count; i++) {
-    const id = ids[i] ?? ''
-    const name = (names[i] ?? '').trim()
-    if (!id && !name) continue
-    out.push({ id, name: name || 'Викладач' })
-  }
-  return out
-}
+/** @deprecated Use `mapOptimateEventToCalendar` from `calendar-types`. */
+export const adminEventToCalendarEvent = mapOptimateEventToCalendar

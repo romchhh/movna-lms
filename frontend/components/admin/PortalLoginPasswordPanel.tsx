@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import { adminOptimateApi, StudentAccount } from '@/lib/admin-optimate-api'
-import { EyeIcon, EyeOffIcon, IconButton } from '@/components/shared/Icons'
+import { CheckIcon, CopyIcon, EyeIcon, EyeOffIcon, IconButton } from '@/components/shared/Icons'
 
 interface PortalLoginPasswordPanelProps {
   kind: 'student' | 'teacher'
@@ -25,6 +25,7 @@ export function PortalLoginPasswordPanel({ kind, optimateId }: PortalLoginPasswo
   const [account, setAccount] = useState<StudentAccount | null>(null)
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
+  const [copied, setCopied] = useState(false)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
@@ -50,6 +51,10 @@ export function PortalLoginPasswordPanel({ kind, optimateId }: PortalLoginPasswo
     load()
   }, [load])
 
+  useEffect(() => {
+    setCopied(false)
+  }, [password])
+
   async function handleSave() {
     setSaving(true)
     setError('')
@@ -65,6 +70,18 @@ export function PortalLoginPasswordPanel({ kind, optimateId }: PortalLoginPasswo
       setError(err instanceof Error ? err.message : 'Помилка')
     } finally {
       setSaving(false)
+    }
+  }
+
+  async function handleCopy() {
+    const value = password.trim()
+    if (!value) return
+    try {
+      await navigator.clipboard.writeText(value)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    } catch {
+      setError('Не вдалося скопіювати пароль')
     }
   }
 
@@ -126,6 +143,13 @@ export function PortalLoginPasswordPanel({ kind, optimateId }: PortalLoginPasswo
               placeholder={account.has_password ? '••••••••' : 'Пароль не задано'}
               autoComplete="new-password"
             />
+            <IconButton
+              label={copied ? 'Скопійовано' : 'Копіювати пароль'}
+              onClick={handleCopy}
+              disabled={!password.trim()}
+            >
+              {copied ? <CheckIcon /> : <CopyIcon />}
+            </IconButton>
             <IconButton
               label={showPassword ? 'Сховати пароль' : 'Показати пароль'}
               onClick={() => setShowPassword(v => !v)}

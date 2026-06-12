@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import asyncio
 from dataclasses import replace
-from collections import defaultdict
 from datetime import datetime, timedelta, timezone
 from typing import Any, Optional
 
@@ -13,6 +12,7 @@ from app.services.optimate import (
     ProductBalance,
     get_optimate_client,
 )
+from app.services.optimate_balance_enrichment import enrich_students_balances
 from app.services.optimate_parsers import (
     enrich_admin_event_dict,
     enrich_event_teacher_names,
@@ -192,14 +192,16 @@ async def get_cached_admin_students(
     client = get_optimate_client()
 
     async def fetch() -> tuple[list[dict[str, Any]], int]:
-        return await client.list_students(
+        items, total = await client.list_students(
             page_number=page,
             page_size=page_size,
             student_name=search or None,
             statuses=statuses,
         )
+        items = await enrich_students_balances(client, items)
+        return items, total
 
-    key = f"{_admin_prefix()}students:{page}:{page_size}:{search or ''}:{statuses or ''}"
+    key = f"{_admin_prefix()}students:v2:{page}:{page_size}:{search or ''}:{statuses or ''}"
     return await optimate_cache.get_or_fetch(
         key,
         settings.OPTIMATE_CACHE_ADMIN_LIST_TTL,
@@ -311,6 +313,30 @@ async def get_cached_admin_events(
     )
 
 
+async def _fetch_events_all(
+    client,
+    date_from: str,
+    date_to: str,
+    *,
+    page_size: int = 200,
+    max_pages: int = 15,
+) -> list[dict[str, Any]]:
+    all_items: list[dict[str, Any]] = []
+    total = 0
+    for page in range(1, max_pages + 1):
+        items, total = await client.list_events(
+            date_from=date_from,
+            date_to=date_to,
+            page_number=page,
+            page_size=page_size,
+            sort_order="asc",
+        )
+        all_items.extend(items)
+        if len(all_items) >= total or not items:
+            break
+    return all_items
+
+
 async def get_cached_admin_overview(
     *,
     force_refresh: bool = False,
@@ -318,9 +344,19 @@ async def get_cached_admin_overview(
     client = get_optimate_client()
 
     async def fetch() -> dict[str, Any]:
+        from app.services.event_analytics import (
+            aggregate_school_month_events,
+            aggregate_week_activity,
+            kyiv_today,
+            month_bounds,
+            month_label_for,
+        )
+
         now = datetime.now(timezone.utc)
+        today_kyiv = kyiv_today()
         today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
-        week_start = today_start - timedelta(days=6)
+        week_start_date = today_kyiv - timedelta(days=6)
+        week_start = datetime.combine(week_start_date, datetime.min.time()).replace(tzinfo=timezone.utc)
         week_end = today_start + timedelta(days=7)
         date_from_week = _iso(week_start)
         date_to_week = _iso(week_end)
@@ -328,19 +364,32 @@ async def get_cached_admin_overview(
         date_to_today = _iso(today_start + timedelta(days=1))
         date_from_now = _iso(now)
 
+        month_start_date, month_end_exclusive = month_bounds(today_kyiv.year, today_kyiv.month)
+        month_start_dt = datetime.combine(month_start_date, datetime.min.time()).replace(tzinfo=timezone.utc)
+        month_end_dt = datetime.combine(month_end_exclusive, datetime.min.time()).replace(tzinfo=timezone.utc)
+        date_from_month = _iso(month_start_dt)
+        date_to_month = _iso(month_end_dt + timedelta(days=45))
+
         (
             (_, students_total),
             (_, teachers_total),
+            (_, active_students),
+            (_, new_students),
+            (_, paused_students),
             (_, events_week_total),
             (_, events_today_total),
             (low_balance_raw, _),
             (teachers_load_raw, _),
             (teachers_all_raw, _),
             (upcoming_raw, _),
-            (week_events_raw, _),
+            week_events_raw,
+            month_events_raw,
         ) = await asyncio.gather(
             client.list_students(page_number=1, page_size=1),
             client.list_teachers(page_number=1, page_size=1),
+            client.list_students(page_number=1, page_size=1, statuses="1"),
+            client.list_students(page_number=1, page_size=1, statuses="3"),
+            client.list_students(page_number=1, page_size=1, statuses="4"),
             client.list_events(
                 date_from=date_from_week,
                 date_to=date_to_week,
@@ -355,7 +404,7 @@ async def get_cached_admin_overview(
             ),
             client.list_students(
                 page_number=1,
-                page_size=20,
+                page_size=50,
                 sort_by="remainingLessonCount",
                 sort_order="asc",
             ),
@@ -373,29 +422,25 @@ async def get_cached_admin_overview(
                 page_size=10,
                 sort_order="asc",
             ),
-            client.list_events(
-                date_from=date_from_week,
-                date_to=date_to_week,
-                page_number=1,
-                page_size=200,
-                sort_order="asc",
-            ),
+            _fetch_events_all(client, date_from_week, date_to_week),
+            _fetch_events_all(client, date_from_month, date_to_month),
         )
 
         low_balance_students: list[dict[str, Any]] = []
+        low_balance_count = 0
         for item in low_balance_raw:
             parsed = parse_student_list_item(item)
             if parsed["status"] == 2 or parsed["remaining_lessons"] > 3:
                 continue
-            low_balance_students.append({
-                "id": parsed["id"],
-                "full_name": parsed["full_name"],
-                "remaining_lessons": parsed["remaining_lessons"],
-                "product_count": parsed["product_count"],
-                "chat_url": parsed.get("chat_url"),
-            })
-            if len(low_balance_students) >= 8:
-                break
+            low_balance_count += 1
+            if len(low_balance_students) < 8:
+                low_balance_students.append({
+                    "id": parsed["id"],
+                    "full_name": parsed["full_name"],
+                    "remaining_lessons": parsed["remaining_lessons"],
+                    "product_count": parsed["product_count"],
+                    "chat_url": parsed.get("chat_url"),
+                })
 
         teacher_load = []
         for item in teachers_load_raw:
@@ -418,37 +463,26 @@ async def get_cached_admin_overview(
             if count:
                 unmarked_lessons += int(count)
 
-        day_labels = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Нд"]
-        day_counts: dict[str, int] = defaultdict(int)
-        day_order: list[str] = []
-        for i in range(7):
-            day = week_start + timedelta(days=i)
-            key = day.strftime("%Y-%m-%d")
-            day_order.append(key)
-            day_counts[key] = 0
-
-        for item in week_events_raw:
-            starts_at = item.get("startsAt") or ""
-            if len(starts_at) >= 10:
-                day_counts[starts_at[:10]] += 1
-
-        week_activity = [
-            {
-                "day": key,
-                "label": day_labels[(week_start + timedelta(days=i)).weekday()],
-                "count": day_counts[key],
-            }
-            for i, key in enumerate(day_order)
-        ]
+        week_activity = aggregate_week_activity(week_events_raw, week_start=week_start_date)
+        month_stats = aggregate_school_month_events(
+            month_events_raw,
+            month_start=month_start_date,
+            month_end=month_end_exclusive,
+        )
 
         name_map, _, _ = await get_cached_teacher_name_map()
 
         return {
             "students_total": students_total,
             "teachers_total": teachers_total,
+            "active_students": active_students,
+            "new_students": new_students,
+            "paused_students": paused_students,
+            "low_balance_count": low_balance_count,
             "events_today": events_today_total,
             "events_week": events_week_total,
             "unmarked_lessons": unmarked_lessons,
+            "month_label": month_label_for(today_kyiv),
             "low_balance_students": low_balance_students,
             "teacher_load": teacher_load,
             "upcoming_events": [
@@ -456,6 +490,7 @@ async def get_cached_admin_overview(
                 for item in upcoming_raw
             ],
             "week_activity": week_activity,
+            **month_stats,
         }
 
     return await optimate_cache.get_or_fetch(
@@ -525,6 +560,36 @@ async def get_cached_teacher_events(
     return (events, total, date_from, date_to), cached_at, from_cache
 
 
+async def get_cached_teacher_lesson_stats(
+    teacher_id: str,
+    days_back: int = 365,
+    days_forward: int = 90,
+    *,
+    force_refresh: bool = False,
+) -> tuple[dict[str, Any], float, bool]:
+    from app.services.teacher_lesson_stats import (
+        DEFAULT_DAYS_BACK,
+        DEFAULT_DAYS_FORWARD,
+        compute_teacher_lesson_stats,
+        fetch_all_teacher_events,
+    )
+
+    back = days_back if days_back > 0 else DEFAULT_DAYS_BACK
+    forward = days_forward if days_forward > 0 else DEFAULT_DAYS_FORWARD
+
+    async def fetch() -> dict[str, Any]:
+        events, _, _ = await fetch_all_teacher_events(teacher_id, back, forward)
+        events = await _enrich_parsed_events(events, force_refresh=False)
+        return compute_teacher_lesson_stats(events, days_back=back, days_forward=forward)
+
+    return await optimate_cache.get_or_fetch(
+        f"{_teacher_prefix(teacher_id)}lesson_stats:{back}:{forward}",
+        settings.OPTIMATE_CACHE_TEACHER_EVENTS_TTL,
+        fetch,
+        force_refresh=force_refresh,
+    )
+
+
 async def get_cached_teacher_students(
     teacher_id: str,
     page: int,
@@ -536,15 +601,17 @@ async def get_cached_teacher_students(
     client = get_optimate_client()
 
     async def fetch() -> tuple[list[dict[str, Any]], int]:
-        return await client.list_teacher_students(
+        items, total = await client.list_teacher_students(
             teacher_id,
             page_number=page,
             page_size=page_size,
             student_name=search or None,
         )
+        items = await enrich_students_balances(client, items)
+        return items, total
 
     return await optimate_cache.get_or_fetch(
-        f"{_teacher_prefix(teacher_id)}students:{page}:{page_size}:{search or ''}",
+        f"{_teacher_prefix(teacher_id)}students:v2:{page}:{page_size}:{search or ''}",
         settings.OPTIMATE_CACHE_TEACHER_EVENTS_TTL,
         fetch,
         force_refresh=force_refresh,

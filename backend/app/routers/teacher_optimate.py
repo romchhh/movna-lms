@@ -21,12 +21,14 @@ from app.schemas.optimate import (
     TeacherScheduleOut,
     TeacherSchedulesResponse,
     TeacherStudentDetailResponse,
+    TeacherLessonStatsOut,
     TeacherStudentOut,
 )
 from app.services.optimate import get_optimate_client
 from app.services.optimate_admin_labels import PROFILE_INCLUDE
 from app.services.optimate_cache import (
     get_cached_teacher_events,
+    get_cached_teacher_lesson_stats,
     get_cached_teacher_groups_with_students,
     get_cached_teacher_schedules,
     get_cached_teacher_student_detail,
@@ -38,6 +40,7 @@ from app.services.optimate_profile import (
     build_teacher_patch,
     teacher_profile_out,
 )
+from app.routers.optimate_router_helpers import cache_meta, ensure_optimate_configured
 from app.services.optimate_parsers import (
     parse_teacher_schedule,
     parse_teacher_student_item,
@@ -45,13 +48,6 @@ from app.services.optimate_parsers import (
 )
 
 router = APIRouter()
-
-
-def _cache_meta(cached_at: float, from_cache: bool) -> CacheMeta:
-    return CacheMeta(
-        cached=from_cache,
-        synced_at=datetime.fromtimestamp(cached_at, tz=timezone.utc),
-    )
 
 
 async def _resolve_teacher_id(user: User, db: AsyncSession) -> str:
@@ -115,18 +111,12 @@ def _schedule_out(raw: dict) -> TeacherScheduleOut:
     )
 
 
-def _ensure_optimate() -> None:
-    client = get_optimate_client()
-    if not client.is_configured:
-        raise HTTPException(status_code=503, detail="Optimate API не налаштовано")
-
-
 @router.get("/profile", response_model=TeacherProfileOut)
 async def teacher_profile(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_role(UserRole.TEACHER)),
 ):
-    _ensure_optimate()
+    ensure_optimate_configured()
     teacher_id = await _resolve_teacher_id(current_user, db)
     client = get_optimate_client()
     raw = await client.get_teacher_by_id(teacher_id, include=PROFILE_INCLUDE)
@@ -141,7 +131,7 @@ async def update_teacher_profile(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_role(UserRole.TEACHER)),
 ):
-    _ensure_optimate()
+    ensure_optimate_configured()
     payload = build_teacher_patch(body)
     if not payload:
         raise HTTPException(status_code=400, detail="Немає полів для оновлення")
@@ -195,7 +185,7 @@ async def teacher_schedules(
     )
     return TeacherSchedulesResponse(
         data=[_schedule_out(item) for item in items],
-        cache=_cache_meta(cached_at, from_cache),
+        cache=cache_meta(cached_at, from_cache),
     )
 
 
@@ -223,8 +213,30 @@ async def teacher_events(
         total=total,
         date_from=date_from,
         date_to=date_to,
-        cache=_cache_meta(cached_at, from_cache),
+        cache=cache_meta(cached_at, from_cache),
     )
+
+
+@router.get("/lesson-stats", response_model=TeacherLessonStatsOut)
+async def teacher_lesson_stats(
+    days_back: int = Query(365, ge=30, le=730),
+    days_forward: int = Query(90, ge=7, le=180),
+    refresh: bool = Query(False),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_role(UserRole.TEACHER)),
+):
+    client = get_optimate_client()
+    if not client.is_configured:
+        raise HTTPException(status_code=503, detail="Optimate API не налаштовано")
+
+    teacher_id = await _resolve_teacher_id(current_user, db)
+    stats, cached_at, from_cache = await get_cached_teacher_lesson_stats(
+        teacher_id,
+        days_back=days_back,
+        days_forward=days_forward,
+        force_refresh=refresh,
+    )
+    return TeacherLessonStatsOut(**stats, cache=cache_meta(cached_at, from_cache))
 
 
 @router.get("/students", response_model=PaginatedTeacherStudentsOut)
@@ -253,7 +265,7 @@ async def teacher_students(
         total=total,
         page=page,
         page_size=page_size,
-        cache=_cache_meta(cached_at, from_cache),
+        cache=cache_meta(cached_at, from_cache),
     )
 
 
@@ -279,7 +291,7 @@ async def teacher_student_detail(
     teacher_name = f"{current_user.first_name} {current_user.last_name}".strip() or None
     return TeacherStudentDetailResponse(
         data=ensure_viewing_teacher_on_student(raw, teacher_id, teacher_name=teacher_name),
-        cache=_cache_meta(cached_at, from_cache),
+        cache=cache_meta(cached_at, from_cache),
     )
 
 
@@ -307,5 +319,5 @@ async def teacher_groups(
             for item in items
         ],
         total=total,
-        cache=_cache_meta(cached_at, from_cache),
+        cache=cache_meta(cached_at, from_cache),
     )

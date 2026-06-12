@@ -212,3 +212,42 @@ class TeacherProfileUpdate(BaseModel):
     first_name: Optional[str] = None
     last_name: Optional[str] = None
     description: Optional[str] = None
+
+
+class TeacherLessonStatsDayActivity(BaseModel):
+    day: str
+    label: str
+    total: int
+    completed: int
+    planned: int
+
+
+class LessonFormatBreakdown(BaseModel):
+    individual: int = 0
+    group: int = 0
+    pair: int = 0
+    speaking_club: int = 0
+
+
+class TeacherLessonStatsOut(BaseModel):
+    month_label: str
+    days_back: int
+    days_forward: int
+    completed_in_period: int
+    completed_this_month: int
+    completed_last_month: int
+    completed_this_week: int
+    completed_today: int
+    planned_this_month: int
+    planned_this_week: int
+    planned_upcoming: int
+    cancelled_this_month: int
+    hours_this_month: float
+    month_change_pct: int
+    week_activity: list[TeacherLessonStatsDayActivity]
+    unique_students_month: int = 0
+    trial_lessons_month: int = 0
+    format_breakdown_month: LessonFormatBreakdown = LessonFormatBreakdown()
+    busiest_weekday_label: str = "—"
+    avg_lessons_per_week: float = 0
+    cache: CacheMeta

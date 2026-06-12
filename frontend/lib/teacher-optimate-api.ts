@@ -1,7 +1,34 @@
-import { getToken } from './auth'
-import type { CacheMeta, PaginatedEvents, StudentEvent } from './optimate-api'
+import { apiFetch, withRefreshQuery } from './api-fetch'
+import type { CacheMeta, LessonFormatBreakdown, WeekActivityDay } from './optimate-types'
+import type { PaginatedEvents, StudentEvent } from './optimate-api'
 
-export type { CacheMeta }
+export type { CacheMeta, LessonFormatBreakdown }
+
+export type TeacherLessonStatsDayActivity = WeekActivityDay
+
+export interface TeacherLessonStats {
+  month_label: string
+  days_back: number
+  days_forward: number
+  completed_in_period: number
+  completed_this_month: number
+  completed_last_month: number
+  completed_this_week: number
+  completed_today: number
+  planned_this_month: number
+  planned_this_week: number
+  planned_upcoming: number
+  cancelled_this_month: number
+  hours_this_month: number
+  month_change_pct: number
+  week_activity: TeacherLessonStatsDayActivity[]
+  unique_students_month: number
+  trial_lessons_month: number
+  format_breakdown_month: LessonFormatBreakdown
+  busiest_weekday_label: string
+  avg_lessons_per_week: number
+  cache: CacheMeta
+}
 
 export interface ScheduleSlot {
   start_time: string
@@ -104,33 +131,8 @@ export type TeacherProfileUpdate = {
   description?: string
 }
 
-async function teacherFetch<T>(path: string, init?: RequestInit): Promise<T> {
-  const token = getToken()
-  if (!token) throw new Error('Не авторизовано')
-
-  const res = await fetch(path, {
-    ...init,
-    headers: {
-      Authorization: `Bearer ${token}`,
-      ...(init?.body ? { 'Content-Type': 'application/json' } : {}),
-      ...(init?.headers as Record<string, string> | undefined),
-    },
-  })
-
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({ detail: res.statusText }))
-    const detail = err.detail
-    throw new Error(typeof detail === 'string' ? detail : 'Помилка Optimate')
-  }
-
-  if (res.status === 204) return undefined as T
-  return res.json()
-}
-
-function withRefresh(path: string, refresh?: boolean) {
-  if (!refresh) return path
-  return `${path}${path.includes('?') ? '&' : '?'}refresh=true`
-}
+const teacherFetch = <T>(path: string, init?: RequestInit) =>
+  apiFetch<T>(path, init, { errorMessage: 'Помилка Optimate' })
 
 export const teacherOptimateApi = {
   profile: () => teacherFetch<TeacherProfile>('/api/teacher/optimate/profile'),
@@ -142,12 +144,19 @@ export const teacherOptimateApi = {
   schedules: (date?: string, refresh?: boolean) => {
     const q = date ? `?date=${encodeURIComponent(date)}` : ''
     return teacherFetch<TeacherSchedulesResponse>(
-      withRefresh(`/api/teacher/optimate/schedules${q}`, refresh),
+      withRefreshQuery(`/api/teacher/optimate/schedules${q}`, refresh),
     )
   },
+  lessonStats: (daysBack = 365, daysForward = 90, refresh?: boolean) =>
+    teacherFetch<TeacherLessonStats>(
+      withRefreshQuery(
+        `/api/teacher/optimate/lesson-stats?days_back=${daysBack}&days_forward=${daysForward}`,
+        refresh,
+      ),
+    ),
   events: (daysBack = 7, daysForward = 30, refresh?: boolean) =>
     teacherFetch<PaginatedEvents & { data: TeacherEvent[] }>(
-      withRefresh(
+      withRefreshQuery(
         `/api/teacher/optimate/events?days_back=${daysBack}&days_forward=${daysForward}`,
         refresh,
       ),
@@ -159,16 +168,16 @@ export const teacherOptimateApi = {
     })
     if (search.trim()) q.set('search', search.trim())
     return teacherFetch<PaginatedTeacherStudents>(
-      withRefresh(`/api/teacher/optimate/students?${q}`, refresh),
+      withRefreshQuery(`/api/teacher/optimate/students?${q}`, refresh),
     )
   },
   studentDetail: (studentId: string, refresh?: boolean) =>
     teacherFetch<{ data: Record<string, unknown>; cache: CacheMeta }>(
-      withRefresh(`/api/teacher/optimate/students/${encodeURIComponent(studentId)}`, refresh),
+      withRefreshQuery(`/api/teacher/optimate/students/${encodeURIComponent(studentId)}`, refresh),
     ),
   groups: (refresh?: boolean) =>
     teacherFetch<TeacherGroupsResponse>(
-      withRefresh('/api/teacher/optimate/groups', refresh),
+      withRefreshQuery('/api/teacher/optimate/groups', refresh),
     ),
   refreshAll: () => teacherFetch<void>('/api/teacher/optimate/refresh', { method: 'POST' }),
 }

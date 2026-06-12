@@ -16,8 +16,10 @@ from app.core.security import (
     decode_token,
     get_current_user,
 )
+from datetime import timedelta
+
 from app.models.user import User, UserRole
-from app.schemas import LoginRequest, TokenResponse, RegisterRequest, UserOut
+from app.schemas import LoginRequest, RefreshRequest, TokenResponse, RegisterRequest, UserOut
 from app.services.auth_flow import (
     verify_optimate_for_user,
     sync_user_from_optimate,
@@ -76,8 +78,19 @@ async def login(body: LoginRequest, db: AsyncSession = Depends(get_db)):
     contact = await verify_optimate_for_user(user)
     await sync_user_from_optimate(user, contact)
 
+    access_ttl = (
+        timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
+        if body.remember_me
+        else timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+    )
+
     return TokenResponse(
-        access_token=create_access_token(user.id, user.role.value, user.optimeit_id or None),
+        access_token=create_access_token(
+            user.id,
+            user.role.value,
+            user.optimeit_id or None,
+            expires_delta=access_ttl,
+        ),
         refresh_token=create_refresh_token(user.id),
         role=user.role,
     )
@@ -167,8 +180,8 @@ async def google_callback(code: str | None = None, error: str | None = None, db:
 
 
 @router.post("/refresh", response_model=TokenResponse)
-async def refresh(refresh_token: str, db: AsyncSession = Depends(get_db)):
-    payload = decode_token(refresh_token)
+async def refresh(body: RefreshRequest, db: AsyncSession = Depends(get_db)):
+    payload = decode_token(body.refresh_token)
     if payload.get("type") != "refresh":
         raise HTTPException(status_code=400, detail="Not a refresh token")
     user_id = int(payload["sub"])
@@ -178,7 +191,12 @@ async def refresh(refresh_token: str, db: AsyncSession = Depends(get_db)):
         raise HTTPException(status_code=401, detail="User not found")
 
     return TokenResponse(
-        access_token=create_access_token(user.id, user.role.value),
+        access_token=create_access_token(
+            user.id,
+            user.role.value,
+            user.optimeit_id or None,
+            expires_delta=timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS),
+        ),
         refresh_token=create_refresh_token(user.id),
         role=user.role,
     )

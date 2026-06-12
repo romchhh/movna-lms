@@ -3,8 +3,16 @@
 import { OptimateEntityModal } from '@/components/admin/OptimateEntityModal'
 import { Badge } from '@/components/shared/UI'
 import { IconButton, ChevronLeftIcon, ChevronRightIcon } from '@/components/shared/Icons'
+import { CalendarFormatLegend } from '@/components/calendar/CalendarFormatLegend'
 import { EventDetailModal } from '@/components/calendar/EventDetailModal'
-import { eventStatusEmoji, type CalendarEvent, type CalendarParticipant, type CalendarViewMode } from '@/lib/calendar-types'
+import { EventFormatBadge } from '@/components/calendar/EventFormatBadge'
+import {
+  calendarEventFormatModifier,
+  eventStatusEmoji,
+  type CalendarEvent,
+  type CalendarParticipant,
+  type CalendarViewMode,
+} from '@/lib/calendar-types'
 import { adminOptimateApi } from '@/lib/admin-optimate-api'
 import { teacherOptimateApi } from '@/lib/teacher-optimate-api'
 import type { CacheMeta } from '@/lib/optimate-api'
@@ -46,6 +54,13 @@ interface EventsCalendarProps {
   entityLinks?: 'admin' | 'teacher'
   /** Показувати викладача / учня на плитках тижня та місяця */
   showParticipants?: boolean
+  /** Учень: кнопки скасування / перенесення уроку */
+  enableLessonRequests?: boolean
+  enableHomework?: boolean
+  enableStudentHomework?: boolean
+  onOpenHomework?: (submissionId: number) => void
+  /** Легенда: індивідуальний / груповий / … */
+  showFormatLegend?: boolean
 }
 
 function statusBadge(variant?: CalendarEvent['status_variant']) {
@@ -89,12 +104,14 @@ function EventCard({
 }) {
   const active = isEventActive(event.starts_at, event.ends_at)
   const Tag = onClick ? 'button' : 'div'
+  const formatMod = calendarEventFormatModifier(event.schedule_class)
 
   return (
     <Tag
       type={onClick ? 'button' : undefined}
       className={[
         'cal-event-card',
+        formatMod,
         compact && 'cal-event-card--compact',
         onClick && 'cal-event-card--clickable',
         selected && 'cal-event-card--selected',
@@ -105,11 +122,17 @@ function EventCard({
       <div className="cal-event-card-top">
         <span className="cal-event-card-title">
           <StatusEmoji label={event.status_label} />
+          <EventFormatBadge scheduleClass={event.schedule_class} compact />
           {event.title}
         </span>
-        {event.status_label && (
-          <Badge variant={statusBadge(event.status_variant)}>{event.status_label}</Badge>
-        )}
+        <span className="cal-event-card-badges">
+          {event.schedule_class_label && (
+            <span className="cal-event-format-label">{event.schedule_class_label}</span>
+          )}
+          {event.status_label && (
+            <Badge variant={statusBadge(event.status_variant)}>{event.status_label}</Badge>
+          )}
+        </span>
       </div>
       <div className="cal-event-card-time">{formatTimeRange(event.starts_at, event.ends_at)}</div>
       {!compact && event.subtitle && (
@@ -257,11 +280,16 @@ function WeekView({
                     {dayEvents.map(event => {
                       const { top, height } = eventPositionPercent(event.starts_at, event.ends_at)
                       const isActive = activeEventId === event.id
+                      const formatMod = calendarEventFormatModifier(event.schedule_class)
                       return (
                         <button
                           key={event.id}
                           type="button"
-                          className={`cal-week-event${isActive ? ' cal-week-event--active' : ''}`}
+                          className={[
+                            'cal-week-event',
+                            formatMod,
+                            isActive && 'cal-week-event--active',
+                          ].filter(Boolean).join(' ')}
                           style={{
                             top: `${top}%`,
                             height: `${Math.max(height, 4)}%`,
@@ -271,6 +299,7 @@ function WeekView({
                         >
                           <span className="cal-week-event-title">
                             <StatusEmoji label={event.status_label} />
+                            <EventFormatBadge scheduleClass={event.schedule_class} compact />
                             {event.title}
                           </span>
                           {showParticipants && event.subtitle && (
@@ -348,16 +377,19 @@ function MonthView({
                       )}
                     </button>
                     <div className="cal-month-cell-events">
-                      {dayEvents.slice(0, 3).map(ev => (
+                      {dayEvents.slice(0, 3).map(ev => {
+                        const formatMod = calendarEventFormatModifier(ev.schedule_class)
+                        return (
                         <button
                           key={ev.id}
                           type="button"
-                          className="cal-month-pill"
+                          className={['cal-month-pill', formatMod].filter(Boolean).join(' ')}
                           style={{ '--event-accent': ev.accent_color ?? 'var(--p)' } as CSSProperties}
                           onClick={() => onSelectEvent(ev)}
                         >
                           <span className="cal-month-pill-time">
                             <StatusEmoji label={ev.status_label} />
+                            <EventFormatBadge scheduleClass={ev.schedule_class} compact />
                             {formatTimeRange(ev.starts_at, ev.ends_at).split('–')[0]}
                           </span>
                           <span className="cal-month-pill-title">{ev.title}</span>
@@ -365,7 +397,8 @@ function MonthView({
                             <span className="cal-month-pill-sub">{ev.subtitle}</span>
                           )}
                         </button>
-                      ))}
+                        )
+                      })}
                       {dayEvents.length > 3 && (
                         <button
                           type="button"
@@ -457,6 +490,11 @@ export function EventsCalendar({
   embed = false,
   entityLinks,
   showParticipants = false,
+  enableLessonRequests = false,
+  enableHomework = false,
+  enableStudentHomework = false,
+  onOpenHomework,
+  showFormatLegend = !embed,
 }: EventsCalendarProps) {
   const today = startOfDay(new Date())
   const [view, setView] = useState<CalendarViewMode>(defaultView)
@@ -589,6 +627,8 @@ export function EventsCalendar({
           accent={accent}
         />
 
+        {showFormatLegend && !loading && events.length > 0 && <CalendarFormatLegend />}
+
         {loading && (
           <div className="cal-loading">
             <span className="cal-loading-spinner" />
@@ -673,6 +713,10 @@ export function EventsCalendar({
         }}
         onParticipantClick={entityLinks ? openParticipant : undefined}
         allowEscape={!entityId}
+        enableLessonRequests={enableLessonRequests}
+        enableHomework={enableHomework}
+        enableStudentHomework={enableStudentHomework}
+        onOpenHomework={onOpenHomework}
       />
 
       {entityLinks && (

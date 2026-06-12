@@ -53,7 +53,7 @@ export default function StudentCourse() {
       <PageHeader title="Мій курс" sub="English Speaking B1→B2 · 31 урок" />
 
       {/* Overall progress */}
-      <div style={{ background: 'var(--bg2)', borderRadius: 'var(--r14)', padding: '16px 20px' }}>
+      <div className="course-progress-banner" style={{ background: 'var(--bg2)', borderRadius: 'var(--r14)', padding: '16px 20px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
           <div>
             <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--tx)', marginBottom: 3 }}>Загальний прогрес</div>
@@ -74,7 +74,7 @@ export default function StudentCourse() {
         return (
           <Card key={m.id}>
             {/* Module header */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div className="course-module-header" style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
               <div style={{ width: 32, height: 32, borderRadius: 8, background: bg, color: c, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, flexShrink: 0 }}>
                 {iconMap[m.status as keyof typeof iconMap]}
               </div>
@@ -85,7 +85,7 @@ export default function StudentCourse() {
                   </span>
                   {m.status === 'current' && <Badge variant="purple">Зараз</Badge>}
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div className="course-module-progress" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                   <ProgressBar pct={pct} color={m.status === 'done' ? 'var(--t)' : 'var(--p)'} small />
                   <span style={{ fontSize: 11, color: 'var(--tx2)', flexShrink: 0 }}>{m.done}/{m.lessons}</span>
                 </div>
@@ -98,7 +98,7 @@ export default function StudentCourse() {
                 {m.lessons_list.map((l, li) => {
                   const lc = colorMap[l.status as keyof typeof colorMap]
                   return (
-                    <div key={li} style={{
+                    <div key={li} className="course-lesson-row" style={{
                       display: 'flex', alignItems: 'center', gap: 10,
                       padding: '8px 10px', borderRadius: 'var(--r8)',
                       background: l.status === 'current' ? 'var(--bg2)' : 'transparent',

@@ -131,6 +131,7 @@ class AdminEventOut(BaseModel):
     student_ids: list[str] = []
     teacher_names: list[str] = []
     teacher_ids: list[str] = []
+    schedule_class: str = "individual"
 
 
 class PaginatedEventsOut(BaseModel):
@@ -162,14 +163,42 @@ class AdminOverviewDayActivity(BaseModel):
     day: str
     label: str
     count: int
+    completed: int = 0
+    planned: int = 0
+
+
+class AdminOverviewTeacherRank(BaseModel):
+    id: str
+    full_name: str
+    lessons: int
+
+
+class AdminOverviewFormatBreakdown(BaseModel):
+    individual: int = 0
+    group: int = 0
+    pair: int = 0
+    speaking_club: int = 0
 
 
 class AdminOverviewOut(BaseModel):
     students_total: int
     teachers_total: int
+    active_students: int = 0
+    new_students: int = 0
+    paused_students: int = 0
+    low_balance_count: int = 0
     events_today: int
     events_week: int
     unmarked_lessons: int
+    pending_requests: int = 0
+    month_label: str = ""
+    completed_this_month: int = 0
+    planned_this_month: int = 0
+    cancelled_this_month: int = 0
+    completed_today: int = 0
+    hours_completed_month: float = 0
+    format_breakdown: AdminOverviewFormatBreakdown = AdminOverviewFormatBreakdown()
+    top_teachers_month: list[AdminOverviewTeacherRank] = []
     low_balance_students: list[AdminOverviewLowBalance]
     teacher_load: list[AdminOverviewTeacherLoad]
     upcoming_events: list[AdminEventOut]

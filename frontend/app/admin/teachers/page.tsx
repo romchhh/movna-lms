@@ -6,10 +6,12 @@ import { PageHeader, Card, Badge, Empty, Pagination } from '@/components/shared/
 import {
   TeacherListItem,
   adminOptimateApi,
-  statusBadgeVariant,
   stripHtml,
 } from '@/lib/admin-optimate-api'
+import { useDebouncedValue } from '@/hooks/useDebouncedValue'
 import { CacheMeta } from '@/lib/optimate-api'
+import { statusBadgeVariant } from '@/lib/optimate-ui'
+import type { TeacherLessonStats } from '@/lib/teacher-optimate-api'
 import { useCallback, useEffect, useState } from 'react'
 
 const PAGE_SIZE = 50
@@ -20,7 +22,7 @@ export default function AdminTeachers() {
   const [page, setPage] = useState(1)
   const [cache, setCache] = useState<CacheMeta | null>(null)
   const [search, setSearch] = useState('')
-  const [debouncedSearch, setDebouncedSearch] = useState('')
+  const debouncedSearch = useDebouncedValue(search)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
@@ -29,11 +31,8 @@ export default function AdminTeachers() {
   const [detailCache, setDetailCache] = useState<CacheMeta | null>(null)
   const [detailLoading, setDetailLoading] = useState(false)
   const [detailError, setDetailError] = useState('')
-
-  useEffect(() => {
-    const t = setTimeout(() => setDebouncedSearch(search), 350)
-    return () => clearTimeout(t)
-  }, [search])
+  const [lessonStats, setLessonStats] = useState<TeacherLessonStats | null>(null)
+  const [lessonStatsLoading, setLessonStatsLoading] = useState(false)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -57,31 +56,44 @@ export default function AdminTeachers() {
   async function openDetail(id: string) {
     setSelectedId(id)
     setDetail(null)
+    setLessonStats(null)
     setDetailError('')
     setDetailLoading(true)
+    setLessonStatsLoading(true)
     try {
-      const res = await adminOptimateApi.teacherDetail(id)
-      setDetail(res.data)
-      setDetailCache(res.cache)
+      const [detailRes, statsRes] = await Promise.all([
+        adminOptimateApi.teacherDetail(id),
+        adminOptimateApi.teacherLessonStats(id),
+      ])
+      setDetail(detailRes.data)
+      setDetailCache(detailRes.cache)
+      setLessonStats(statsRes)
     } catch (err) {
       setDetailError(err instanceof Error ? err.message : 'Помилка')
     } finally {
       setDetailLoading(false)
+      setLessonStatsLoading(false)
     }
   }
 
   async function refreshDetail() {
     if (!selectedId) return
     setDetailLoading(true)
+    setLessonStatsLoading(true)
     setDetailError('')
     try {
-      const res = await adminOptimateApi.teacherDetail(selectedId, true)
-      setDetail(res.data)
-      setDetailCache(res.cache)
+      const [detailRes, statsRes] = await Promise.all([
+        adminOptimateApi.teacherDetail(selectedId, true),
+        adminOptimateApi.teacherLessonStats(selectedId, 365, 90, true),
+      ])
+      setDetail(detailRes.data)
+      setDetailCache(detailRes.cache)
+      setLessonStats(statsRes)
     } catch (err) {
       setDetailError(err instanceof Error ? err.message : 'Помилка')
     } finally {
       setDetailLoading(false)
+      setLessonStatsLoading(false)
     }
   }
 
@@ -162,6 +174,8 @@ export default function AdminTeachers() {
         onClose={() => setSelectedId(null)}
         onRefresh={refreshDetail}
         kind="teacher"
+        lessonStats={lessonStats}
+        lessonStatsLoading={lessonStatsLoading}
       />
     </>
   )

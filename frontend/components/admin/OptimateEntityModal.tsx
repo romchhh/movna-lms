@@ -2,9 +2,12 @@
 
 import { Badge } from '@/components/shared/UI'
 import { CacheMeta, formatCacheAge } from '@/lib/optimate-api'
-import { ProductSummary, stripHtml, statusBadgeVariant, zipStudentTeachers } from '@/lib/admin-optimate-api'
+import { ProductSummary, stripHtml, zipStudentTeachers } from '@/lib/admin-optimate-api'
+import { statusBadgeVariant } from '@/lib/optimate-ui'
 import { PortalLoginPasswordPanel } from '@/components/admin/PortalLoginPasswordPanel'
 import { OptimateNotesList } from '@/components/admin/OptimateNotesList'
+import { TeacherLessonStatsPanel } from '@/components/teacher/TeacherLessonStatsPanel'
+import type { TeacherLessonStats } from '@/lib/teacher-optimate-api'
 import { CloseIcon, IconButton, RefreshIcon } from '@/components/shared/Icons'
 import { useEffect } from 'react'
 
@@ -22,6 +25,8 @@ interface OptimateEntityModalProps {
   overlayClassName?: string
   audience?: 'admin' | 'teacher'
   onTeacherClick?: (teacherId: string, teacherName: string) => void
+  lessonStats?: TeacherLessonStats | null
+  lessonStatsLoading?: boolean
 }
 
 function DetailSection({ title, children }: { title: string; children: React.ReactNode }) {
@@ -100,6 +105,8 @@ export function OptimateEntityModal({
   overlayClassName,
   onTeacherClick,
   audience = 'admin',
+  lessonStats,
+  lessonStatsLoading,
 }: OptimateEntityModalProps) {
   useEffect(() => {
     if (!open) return
@@ -212,6 +219,16 @@ export function OptimateEntityModal({
                 <ProductsTable products={productsSummary} />
               </DetailSection>
 
+              {kind === 'teacher' && (lessonStatsLoading || lessonStats) && (
+                <DetailSection title="Статистика уроків">
+                  <TeacherLessonStatsPanel
+                    stats={lessonStats ?? null}
+                    loading={lessonStatsLoading}
+                    compact
+                  />
+                </DetailSection>
+              )}
+
               {kind === 'student' && (
                 <DetailSection title="Викладачі">
                   {studentTeachers.length ? (
@@ -245,15 +262,6 @@ export function OptimateEntityModal({
                 </DetailSection>
               )}
 
-              {kind === 'teacher' && Object.keys(stats).length > 0 && (
-                <DetailSection title="Статистика">
-                  <div className="optimate-detail-grid">
-                    {Object.entries(stats).map(([key, value]) => (
-                      <KeyValue key={key} label={key} value={String(value ?? '—')} />
-                    ))}
-                  </div>
-                </DetailSection>
-              )}
             </>
           )}
         </div>

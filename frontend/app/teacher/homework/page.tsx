@@ -1,168 +1,186 @@
 'use client'
-import { useState } from 'react'
-import { PageHeader, Alert, Badge, Card, Empty } from '@/components/shared/UI'
 
-const MOCK = [
-  {
-    id: 1, urgent: true,
-    student: 'Олена Коваль', init: 'ОК', bg: '#EEEDFE', c: '#534AB7',
-    task: 'Есе: Моя улюблена подорож', lesson: 'Модуль 2 · Урок 4',
-    type: 'text', when: '3 дні тому',
-    answer: 'Моя улюблена подорож — поїздка до Карпат влітку 2023 року. Ми їхали невеликою компанією друзів і зупинились у маленькому будинку біля річки...',
-    status: 'submitted',
-  },
-  {
-    id: 2, urgent: false,
-    student: 'Дмитро Сич', init: 'ДС', bg: '#FCEBEB', c: '#E24B4A',
-    task: 'Speaking: Місто мрії', lesson: 'Модуль 3 · Урок 1',
-    type: 'audio', when: '1 день тому',
-    answer: '[Аудіозапис · 2:34]',
-    status: 'submitted',
-  },
-  {
-    id: 3, urgent: false,
-    student: 'Аліна Бондар', init: 'АБ', bg: '#FAEEDA', c: '#BA7517',
-    task: 'Читання: Culture Shock Article', lesson: 'Модуль 3 · Урок 2',
-    type: 'text', when: 'Сьогодні',
-    answer: 'Culture shock is a feeling of disorientation that people experience when they move to a new country or culture...',
-    status: 'submitted',
-  },
-]
+import { HomeworkAssignModal } from '@/components/homework/HomeworkAssignModal'
+import { HomeworkCreateWizard } from '@/components/homework/HomeworkCreateWizard'
+import { HomeworkPendingAlert } from '@/components/homework/HomeworkPendingAlert'
+import { HomeworkReviewModal } from '@/components/homework/HomeworkReviewModal'
+import { HomeworkTeacherCard } from '@/components/homework/HomeworkTeacherCard'
+import { HomeworkTeacherDetailModal } from '@/components/homework/HomeworkTeacherDetailModal'
+import { FilterChipBar } from '@/components/shared/FilterChipBar'
+import { Empty, PageHeader } from '@/components/shared/UI'
+import {
+  filterTeacherHomework,
+  homeworkApi,
+  teacherHomeworkCounts,
+  type HomeworkAssignment,
+  type HomeworkSubmission,
+} from '@/lib/homework-api'
+import { assignmentToCalendarEvent } from '@/lib/homework-utils'
+import { useSearchParams } from 'next/navigation'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 
-type Filter = 'all' | 'urgent' | 'new'
+type Filter = 'all' | 'to_review' | 'reviewed'
+
+const FILTER_LABELS: Record<Filter, string> = {
+  all: 'Усі',
+  to_review: 'Перевірити',
+  reviewed: 'Готово',
+}
 
 export default function TeacherHomework() {
-  const [filter, setFilter] = useState<Filter>('all')
-  const [reviewing, setReviewing] = useState<number | null>(null)
-  const [scores, setScores] = useState<Record<number, string>>({})
-  const [comments, setComments] = useState<Record<number, string>>({})
-  const [done, setDone] = useState<Set<number>>(new Set())
+  const searchParams = useSearchParams()
+  const filterParam = searchParams.get('filter') as Filter | null
 
-  const filtered = MOCK.filter(hw => {
-    if (done.has(hw.id)) return false
-    if (filter === 'urgent') return hw.urgent
-    if (filter === 'new') return !hw.urgent
-    return true
-  })
+  const [filter, setFilter] = useState<Filter>('to_review')
+  const [allItems, setAllItems] = useState<HomeworkAssignment[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+  const [reviewSub, setReviewSub] = useState<HomeworkSubmission | null>(null)
+  const [createOpen, setCreateOpen] = useState(false)
+  const [editAssignment, setEditAssignment] = useState<HomeworkAssignment | null>(null)
+  const [viewContext, setViewContext] = useState<{
+    assignment: HomeworkAssignment
+    submission?: HomeworkSubmission
+  } | null>(null)
 
-  function submit(id: number) {
-    setDone(prev => new Set([...prev, id]))
-    setReviewing(null)
+  const load = useCallback(async () => {
+    setLoading(true)
+    setError('')
+    try {
+      setAllItems(await homeworkApi.teacherList('all'))
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Помилка')
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    load()
+  }, [load])
+
+  useEffect(() => {
+    if (filterParam && ['all', 'to_review', 'reviewed'].includes(filterParam)) {
+      setFilter(filterParam)
+    }
+  }, [filterParam])
+
+  const counts = useMemo(() => teacherHomeworkCounts(allItems), [allItems])
+  const items = useMemo(() => filterTeacherHomework(allItems, filter), [allItems, filter])
+
+  useEffect(() => {
+    if (!filterParam && counts.pendingSubs > 0) {
+      setFilter('to_review')
+    }
+  }, [counts.pendingSubs, filterParam])
+
+  function openEdit(assignment: HomeworkAssignment) {
+    setViewContext(null)
+    setEditAssignment(assignment)
   }
+
+  function openReview(sub: HomeworkSubmission) {
+    setViewContext(null)
+    setReviewSub(sub)
+  }
+
+  const emptyLabel = filter === 'to_review'
+    ? 'Немає відповідей на перевірці — все зроблено'
+    : filter === 'reviewed'
+      ? 'Перевірених ДЗ ще немає'
+      : 'ДЗ не знайдено'
 
   return (
     <>
-      <PageHeader title="Перевірка домашніх завдань" sub={`${filtered.length} завдань очікують`} />
+      <PageHeader title="Домашні завдання" sub="Перевірка та призначення">
+        <button type="button" className="btn btn-teal" onClick={() => setCreateOpen(true)}>
+          + Додати ДЗ
+        </button>
+      </PageHeader>
 
-      {MOCK.some(h => h.urgent && !done.has(h.id)) && (
-        <Alert>Є прострочені завдання — перевірте в першу чергу</Alert>
+      <HomeworkPendingAlert onReview={() => setFilter('to_review')} />
+
+      {error && <div className="alert">{error}</div>}
+
+      {!loading && allItems.length > 0 && (
+        <div className="admin-filters hw-page-filters">
+          <FilterChipBar
+            value={filter}
+            onChange={setFilter}
+            accent="teal"
+            showCounts
+            chips={(['to_review', 'all', 'reviewed'] as const).map(key => ({
+              key,
+              label: FILTER_LABELS[key],
+              count: key === 'all' ? counts.all : key === 'to_review' ? counts.to_review : counts.reviewed,
+            }))}
+          />
+        </div>
       )}
 
-      {/* Filters */}
-      <div style={{ display: 'flex', gap: 8 }}>
-        {(['all', 'urgent', 'new'] as Filter[]).map(f => (
-          <button
-            key={f}
-            onClick={() => setFilter(f)}
-            className="btn btn-sm"
-            style={{
-              background: filter === f ? 'var(--tl)' : 'var(--bg2)',
-              color: filter === f ? 'var(--td)' : 'var(--tx2)',
-              border: `.5px solid ${filter === f ? 'var(--t)' : 'var(--bd2)'}`,
-            }}
-          >
-            {{ all: 'Всі', urgent: '🔴 Прострочені', new: '🟢 Нові' }[f]}
-          </button>
+      {loading && <Empty label="Завантаження..." />}
+      {!loading && items.length === 0 && (
+        <div className="hw-empty-create">
+          <Empty label={emptyLabel} />
+          {filter !== 'to_review' && (
+            <button type="button" className="btn btn-teal btn-sm" onClick={() => setCreateOpen(true)}>
+              Додати ДЗ
+            </button>
+          )}
+        </div>
+      )}
+
+      <div className="hw-teacher-list">
+        {items.map(assignment => (
+          <HomeworkTeacherCard
+            key={assignment.id}
+            assignment={assignment}
+            onView={sub => setViewContext({ assignment, submission: sub })}
+            onEdit={() => openEdit(assignment)}
+            onReview={openReview}
+          />
         ))}
       </div>
 
-      {filtered.length === 0 && <Empty label="Чудово! Усі завдання перевірено ✓" />}
+      {createOpen && (
+        <HomeworkCreateWizard
+          onClose={() => setCreateOpen(false)}
+          onSaved={load}
+        />
+      )}
 
-      {filtered.map(hw => (
-        <Card key={hw.id}>
-          {/* HW header */}
-          <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
-            <div style={{ width: 36, height: 36, borderRadius: '50%', background: hw.bg, color: hw.c, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 500, flexShrink: 0 }}>
-              {hw.init}
-            </div>
-            <div style={{ flex: 1 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--tx)' }}>{hw.student}</span>
-                {hw.urgent && <Badge variant="red">Прострочено</Badge>}
-              </div>
-              <div style={{ fontSize: 12, color: 'var(--tx2)', marginTop: 2 }}>{hw.task} · {hw.lesson}</div>
-              <div style={{ fontSize: 11, color: 'var(--tx3)', marginTop: 1 }}>Здано: {hw.when}</div>
-            </div>
-            <button
-              onClick={() => setReviewing(reviewing === hw.id ? null : hw.id)}
-              className="btn btn-teal btn-sm"
-            >
-              {reviewing === hw.id ? 'Згорнути' : 'Перевірити'}
-            </button>
-          </div>
+      {viewContext && (
+        <HomeworkTeacherDetailModal
+          assignment={viewContext.assignment}
+          submission={viewContext.submission}
+          onClose={() => setViewContext(null)}
+          onEdit={() => openEdit(viewContext.assignment)}
+          onReview={openReview}
+        />
+      )}
 
-          {/* Answer preview */}
-          <div style={{ background: 'var(--bg2)', borderRadius: 'var(--r8)', padding: '11px 13px', marginTop: 12, fontSize: 13, color: 'var(--tx)', lineHeight: 1.6 }}>
-            {hw.answer}
-          </div>
+      {editAssignment && (
+        <HomeworkAssignModal
+          event={assignmentToCalendarEvent(editAssignment)}
+          existing={editAssignment}
+          onClose={() => setEditAssignment(null)}
+          onSaved={() => {
+            setEditAssignment(null)
+            load()
+          }}
+        />
+      )}
 
-          {/* Review form */}
-          {reviewing === hw.id && (
-            <div style={{ marginTop: 14, display: 'flex', flexDirection: 'column', gap: 10, borderTop: '.5px solid var(--bd)', paddingTop: 14 }}>
-              <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-                <label style={{ fontSize: 12, color: 'var(--tx2)', flexShrink: 0 }}>Оцінка (з 10):</label>
-                <input
-                  className="input"
-                  type="number" min={0} max={10} step={0.5}
-                  placeholder="напр. 8.5"
-                  value={scores[hw.id] ?? ''}
-                  onChange={e => setScores(p => ({ ...p, [hw.id]: e.target.value }))}
-                  style={{ width: 100 }}
-                />
-                {/* Quick grade buttons */}
-                <div style={{ display: 'flex', gap: 6 }}>
-                  {[6, 7, 8, 9, 10].map(n => (
-                    <button
-                      key={n}
-                      onClick={() => setScores(p => ({ ...p, [hw.id]: String(n) }))}
-                      className="btn btn-sm"
-                      style={{
-                        background: scores[hw.id] === String(n) ? 'var(--tl)' : 'var(--bg2)',
-                        color: scores[hw.id] === String(n) ? 'var(--td)' : 'var(--tx2)',
-                        border: `.5px solid var(--bd2)`,
-                        padding: '4px 10px',
-                      }}
-                    >
-                      {n}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <div>
-                <label style={{ fontSize: 12, color: 'var(--tx2)', display: 'block', marginBottom: 5 }}>Коментар викладача:</label>
-                <textarea
-                  className="input"
-                  rows={3}
-                  placeholder="Загалом добре! Зверни увагу на..."
-                  value={comments[hw.id] ?? ''}
-                  onChange={e => setComments(p => ({ ...p, [hw.id]: e.target.value }))}
-                  style={{ resize: 'vertical', lineHeight: 1.5 }}
-                />
-              </div>
-              <div style={{ display: 'flex', gap: 8 }}>
-                <button
-                  className="btn btn-teal"
-                  disabled={!scores[hw.id]}
-                  onClick={() => submit(hw.id)}
-                >
-                  ✓ Зберегти оцінку
-                </button>
-                <button className="btn btn-secondary" onClick={() => setReviewing(null)}>Скасувати</button>
-              </div>
-            </div>
-          )}
-        </Card>
-      ))}
+      {reviewSub && (
+        <HomeworkReviewModal
+          submission={reviewSub}
+          onClose={() => setReviewSub(null)}
+          onReviewed={() => {
+            setReviewSub(null)
+            load()
+          }}
+        />
+      )}
     </>
   )
 }

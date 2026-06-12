@@ -1,12 +1,14 @@
 from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
 from app.core.security import require_role
+from app.models.lesson_request import LessonRequest, LessonRequestStatus
 from app.models.user import User, UserRole
-from app.schemas.optimate import CacheMeta
+from app.schemas.optimate import CacheMeta, TeacherLessonStatsOut
 from app.schemas.optimate_admin import (
     AdminEventOut,
     AdminOverviewOut,
@@ -29,6 +31,7 @@ from app.services.optimate_cache import (
     get_cached_admin_students,
     get_cached_admin_teacher_detail,
     get_cached_admin_teachers,
+    get_cached_teacher_lesson_stats,
     get_cached_teacher_name_map,
     invalidate_admin_cache,
 )
@@ -47,6 +50,7 @@ from app.services.student_account import (
     readable_password as readable_student_password,
     set_student_login_password,
 )
+from app.routers.optimate_router_helpers import cache_meta, ensure_optimate_configured
 from app.services.teacher_account import (
     ensure_teacher_user,
     find_teacher_user,
@@ -55,18 +59,6 @@ from app.services.teacher_account import (
 )
 
 router = APIRouter()
-
-
-def _cache_meta(cached_at: float, from_cache: bool) -> CacheMeta:
-    return CacheMeta(
-        cached=from_cache,
-        synced_at=datetime.fromtimestamp(cached_at, tz=timezone.utc),
-    )
-
-
-def _ensure_optimate():
-    if not get_optimate_client().is_configured:
-        raise HTTPException(status_code=503, detail="Optimate API не налаштовано")
 
 
 def _student_out(item: dict) -> StudentListItemOut:
@@ -118,7 +110,7 @@ async def list_students(
     refresh: bool = Query(False),
     _: User = Depends(require_role(UserRole.ADMIN)),
 ):
-    _ensure_optimate()
+    ensure_optimate_configured()
     (items, total), cached_at, from_cache = await get_cached_admin_students(
         page,
         page_size,
@@ -131,7 +123,7 @@ async def list_students(
         total=total,
         page=page,
         page_size=page_size,
-        cache=_cache_meta(cached_at, from_cache),
+        cache=cache_meta(cached_at, from_cache),
     )
 
 
@@ -141,7 +133,7 @@ async def get_student_detail(
     refresh: bool = Query(False),
     _: User = Depends(require_role(UserRole.ADMIN)),
 ):
-    _ensure_optimate()
+    ensure_optimate_configured()
     raw, cached_at, from_cache = await get_cached_admin_student_detail(
         student_id,
         force_refresh=refresh,
@@ -150,7 +142,7 @@ async def get_student_detail(
         raise HTTPException(status_code=404, detail="Учня не знайдено в Optimate")
     return StudentDetailOut(
         data=enrich_student_detail(raw),
-        cache=_cache_meta(cached_at, from_cache),
+        cache=cache_meta(cached_at, from_cache),
     )
 
 
@@ -242,7 +234,7 @@ async def list_teachers(
     refresh: bool = Query(False),
     _: User = Depends(require_role(UserRole.ADMIN)),
 ):
-    _ensure_optimate()
+    ensure_optimate_configured()
     (items, total), cached_at, from_cache = await get_cached_admin_teachers(
         page,
         page_size,
@@ -255,7 +247,7 @@ async def list_teachers(
         total=total,
         page=page,
         page_size=page_size,
-        cache=_cache_meta(cached_at, from_cache),
+        cache=cache_meta(cached_at, from_cache),
     )
 
 
@@ -265,7 +257,7 @@ async def get_teacher_detail(
     refresh: bool = Query(False),
     _: User = Depends(require_role(UserRole.ADMIN)),
 ):
-    _ensure_optimate()
+    ensure_optimate_configured()
     raw, cached_at, from_cache = await get_cached_admin_teacher_detail(
         teacher_id,
         force_refresh=refresh,
@@ -274,8 +266,26 @@ async def get_teacher_detail(
         raise HTTPException(status_code=404, detail="Викладача не знайдено в Optimate")
     return TeacherDetailOut(
         data=enrich_teacher_detail(raw),
-        cache=_cache_meta(cached_at, from_cache),
+        cache=cache_meta(cached_at, from_cache),
     )
+
+
+@router.get("/teachers/{teacher_id}/lesson-stats", response_model=TeacherLessonStatsOut)
+async def get_teacher_lesson_stats(
+    teacher_id: str,
+    days_back: int = Query(365, ge=30, le=730),
+    days_forward: int = Query(90, ge=7, le=180),
+    refresh: bool = Query(False),
+    _: User = Depends(require_role(UserRole.ADMIN)),
+):
+    ensure_optimate_configured()
+    stats, cached_at, from_cache = await get_cached_teacher_lesson_stats(
+        teacher_id,
+        days_back=days_back,
+        days_forward=days_forward,
+        force_refresh=refresh,
+    )
+    return TeacherLessonStatsOut(**stats, cache=cache_meta(cached_at, from_cache))
 
 
 @router.get("/teachers/{teacher_id}/account", response_model=StudentAccountOut)
@@ -360,11 +370,18 @@ async def generate_teacher_password(
 @router.get("/overview", response_model=AdminOverviewOut)
 async def get_overview(
     refresh: bool = Query(False),
+    db: AsyncSession = Depends(get_db),
     _: User = Depends(require_role(UserRole.ADMIN)),
 ):
-    _ensure_optimate()
+    ensure_optimate_configured()
     data, cached_at, from_cache = await get_cached_admin_overview(force_refresh=refresh)
-    return AdminOverviewOut(**data, cache=_cache_meta(cached_at, from_cache))
+    pending = await db.execute(
+        select(func.count())
+        .select_from(LessonRequest)
+        .where(LessonRequest.status == LessonRequestStatus.PENDING)
+    )
+    data["pending_requests"] = int(pending.scalar_one() or 0)
+    return AdminOverviewOut(**data, cache=cache_meta(cached_at, from_cache))
 
 
 @router.get("/events", response_model=PaginatedEventsOut)
@@ -379,7 +396,7 @@ async def list_events(
     refresh: bool = Query(False),
     _: User = Depends(require_role(UserRole.ADMIN)),
 ):
-    _ensure_optimate()
+    ensure_optimate_configured()
     now = datetime.now(timezone.utc)
     today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
     date_from = _iso(today_start - timedelta(days=days_back))
@@ -403,5 +420,5 @@ async def list_events(
         page_size=page_size,
         date_from=date_from,
         date_to=date_to,
-        cache=_cache_meta(cached_at, from_cache),
+        cache=cache_meta(cached_at, from_cache),
     )

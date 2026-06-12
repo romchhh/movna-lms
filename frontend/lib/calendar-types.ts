@@ -61,18 +61,45 @@ const STATUS_MAP: Record<string, CalendarStatusVariant> = {
   'Заплановано': 'gray',
 }
 
-const CLASS_COLORS: Record<string, string> = {
+export const SCHEDULE_CLASS_COLORS: Record<string, string> = {
   individual: 'var(--a)',
   group: 'var(--p)',
   speaking_club: 'var(--t)',
   pair: 'var(--pd)',
 }
 
-const CLASS_LABELS: Record<string, string> = {
+export const SCHEDULE_CLASS_LABELS: Record<string, string> = {
   individual: 'Індивідуальний',
   group: 'Груповий',
   speaking_club: 'Speaking club',
   pair: 'Парний',
+}
+
+export const SCHEDULE_CLASS_SHORT: Record<string, string> = {
+  individual: 'Інд.',
+  group: 'Група',
+  speaking_club: 'SC',
+  pair: 'Парний',
+}
+
+/** Optimate productType → формат заняття */
+export function scheduleClassFromProductType(productType?: number | null): string {
+  if (productType === 2) return 'group'
+  if (productType === 3) return 'speaking_club'
+  if (productType === 4) return 'pair'
+  return 'individual'
+}
+
+export function resolveScheduleClass(raw: CalendarEventInput): string {
+  if (raw.schedule_class) return raw.schedule_class
+  if (raw.product_type != null) return scheduleClassFromProductType(raw.product_type)
+  if ((raw.student_names?.length ?? 0) > 1) return 'group'
+  return 'individual'
+}
+
+export function calendarEventFormatModifier(scheduleClass?: string): string {
+  if (!scheduleClass) return ''
+  return `cal-event--${scheduleClass}`
 }
 
 function durationMinutes(startIso: string, endIso: string, fallback?: number): number | undefined {
@@ -154,8 +181,9 @@ export function toCalendarEvent(raw: CalendarEventInput): CalendarEvent {
     students.map(s => s.name).join(', ') || undefined,
   ].filter(Boolean)
 
+  const scheduleClass = resolveScheduleClass(raw)
   const accent =
-    (raw.schedule_class && CLASS_COLORS[raw.schedule_class]) ||
+    SCHEDULE_CLASS_COLORS[scheduleClass] ||
     (raw.product_type != null && PRODUCT_COLORS[raw.product_type]) ||
     'var(--p)'
 
@@ -179,7 +207,13 @@ export function toCalendarEvent(raw: CalendarEventInput): CalendarEvent {
     teachers,
     duration_minutes: durationMinutes(raw.starts_at, raw.ends_at, raw.duration),
     event_type_label: raw.event_type_label,
-    schedule_class: raw.schedule_class,
-    schedule_class_label: raw.schedule_class ? CLASS_LABELS[raw.schedule_class] : undefined,
+    schedule_class: scheduleClass,
+    schedule_class_label: SCHEDULE_CLASS_LABELS[scheduleClass],
+    tags: [SCHEDULE_CLASS_SHORT[scheduleClass] ?? scheduleClass],
   }
+}
+
+/** Map Optimate event payload (student / teacher / admin) → calendar tile. */
+export function mapOptimateEventToCalendar(raw: CalendarEventInput): CalendarEvent {
+  return toCalendarEvent(raw)
 }

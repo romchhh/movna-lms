@@ -1,5 +1,7 @@
 'use client'
 
+import { homeForRole } from '@/lib/auth'
+import Link from 'next/link'
 import { useCallback, useEffect, useState } from 'react'
 import { usePathname } from 'next/navigation'
 import Sidebar, { type SidebarProps } from './Sidebar'
@@ -61,9 +63,9 @@ export default function AppShell({ children, sidebar }: AppShellProps) {
             <span />
             <span />
           </button>
-          <div className="mobile-topbar-logo">
+          <Link href={homeForRole(sidebar.role)} className="mobile-topbar-logo" aria-label="На головну">
             <img src="/branding/movna-logo.svg" alt="Movna" width={120} height={28} />
-          </div>
+          </Link>
         </header>
 
         <main className="main-content">{children}</main>

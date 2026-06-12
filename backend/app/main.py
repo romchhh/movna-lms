@@ -1,10 +1,18 @@
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 
-from app.core.database import init_db
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+
 from app.core.config import settings
-from app.routers import auth, users, courses, lessons, homework, schedule, sync, admin, student_optimate, admin_optimate, teacher_optimate
+from app.core.database import init_db
+from app.routers import (
+    admin_optimate,
+    auth,
+    event_homework,
+    lesson_requests,
+    student_optimate,
+    teacher_optimate,
+)
 
 
 @asynccontextmanager
@@ -27,17 +35,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(auth.router,     prefix="/api/auth",     tags=["auth"])
-app.include_router(users.router,    prefix="/api/users",    tags=["users"])
-app.include_router(courses.router,  prefix="/api/courses",  tags=["courses"])
-app.include_router(lessons.router,  prefix="/api/lessons",  tags=["lessons"])
-app.include_router(homework.router, prefix="/api/homework", tags=["homework"])
-app.include_router(schedule.router, prefix="/api/schedule", tags=["schedule"])
+app.include_router(auth.router, prefix="/api/auth", tags=["auth"])
 app.include_router(student_optimate.router, prefix="/api/student/optimate", tags=["student-optimate"])
 app.include_router(teacher_optimate.router, prefix="/api/teacher/optimate", tags=["teacher-optimate"])
-app.include_router(sync.router,     prefix="/api/sync",     tags=["sync"])
-app.include_router(admin.router,    prefix="/api/admin",    tags=["admin"])
 app.include_router(admin_optimate.router, prefix="/api/admin/optimate", tags=["admin-optimate"])
+app.include_router(lesson_requests.router, prefix="/api/lesson-requests", tags=["lesson-requests"])
+app.include_router(event_homework.router, prefix="/api/homework", tags=["homework"])
 
 
 @app.get("/api/health")

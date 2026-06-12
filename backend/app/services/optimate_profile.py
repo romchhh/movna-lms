@@ -53,7 +53,10 @@ def teacher_profile_out(raw: dict[str, Any]) -> TeacherProfileOut:
 
 
 def build_student_patch(body: StudentProfileUpdate) -> dict[str, Any]:
+    """Map portal fields → Optimate PATCH /api/v1/students/{id} body."""
     payload: dict[str, Any] = {}
+    fields_set = body.model_fields_set
+
     if body.first_name is not None:
         payload["firstName"] = body.first_name.strip()
     if body.last_name is not None:
@@ -61,12 +64,15 @@ def build_student_patch(body: StudentProfileUpdate) -> dict[str, Any]:
     if body.chat_url is not None:
         value = body.chat_url.strip()
         payload["chatUrl"] = value or None
-    if body.birth_date is not None:
-        payload["birthDate"] = {
-            "day": body.birth_date.day,
-            "month": body.birth_date.month,
-            "year": body.birth_date.year,
-        }
+    if "birth_date" in fields_set:
+        if body.birth_date is None:
+            payload["birthDate"] = None
+        else:
+            payload["birthDate"] = {
+                "day": body.birth_date.day,
+                "month": body.birth_date.month,
+                "year": body.birth_date.year,
+            }
     return payload
 
 

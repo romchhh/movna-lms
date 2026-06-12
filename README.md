@@ -1,112 +1,106 @@
 # MOVNA LMS
 
-Навчальна платформа для школи MOVNA. Three-panel system: Student / Teacher / Admin.
+Портал школи MOVNA: кабінети учня, викладача та адміна. Дані розкладу, балансів і профілів — з **Optimate CRM**; локальна БД — користувачі порталу та запити на перенесення/скасування уроків.
 
-## Технологічний стек
+## Стек
 
 | Частина | Технологія |
 |---|---|
 | Frontend | Next.js 15 · TypeScript · App Router |
 | Backend | Python 3.12 · FastAPI · SQLAlchemy async |
-| База даних | SQLite (dev) → PostgreSQL (prod) |
-| Auth | JWT (access + refresh tokens) |
-| Зберігання файлів | Local (dev) → S3/Cloudflare R2 (prod) |
+| БД | SQLite (dev) / PostgreSQL (prod) |
+| Auth | JWT (access + refresh, «Запамʼятати мене») |
+| CRM | Optimate API (кеш на бекенді) |
 
-## Швидкий старт (без Docker)
+## Швидкий старт
 
-### 1. Backend
+### Backend
 
 ```bash
 cd backend
-cp .env.example .env        # відредагуй SECRET_KEY
+cp .env.example .env          # SECRET_KEY, OPTIMATE_* (див. нижче)
 python -m venv venv
-source venv/bin/activate    # Windows: venv\Scripts\activate
+source venv/bin/activate
 pip install -r requirements.txt
-python seed.py              # створює тестові дані
+python seed.py                # тестові акаунти (локально)
 uvicorn app.main:app --reload --port 8000
 ```
 
-API доступне на http://localhost:8000
-Swagger docs: http://localhost:8000/docs
+- API: http://localhost:8000  
+- Swagger: http://localhost:8000/docs  
+- Продакшн: `./run.sh` (nohup uvicorn)
 
-### 2. Frontend
+Таблиці створюються автоматично при старті (`init_db`).
+
+### Frontend
 
 ```bash
 cd frontend
+cp .env.example .env.local    # NEXT_PUBLIC_API_URL=http://localhost:8000
 npm install
 npm run dev
 ```
 
 Відкрий http://localhost:3000
 
-## Тестові акаунти (після seed.py)
+**Важливо для продакшну:** `NEXT_PUBLIC_API_URL` задається на етапі **збірки** (`npm run build`).
+
+## Тестові акаунти (після `seed.py`)
+
+Працюють, якщо `OPTIMATE_VERIFY_ON_LOGIN=false` у `.env` бекенду.
 
 | Роль | Email | Пароль |
 |---|---|---|
 | Адмін | admin@movna.ua | admin123 |
 | Викладач | teacher@movna.ua | teacher123 |
-| Студент | student@movna.ua | student123 |
+| Учень | student@movna.ua | student123 |
 
-## Запуск через Docker
-
-```bash
-docker-compose up --build
-```
-
-## Структура проєкту
+## Структура
 
 ```
 movna-lms/
-├── backend/
-│   ├── app/
-│   │   ├── core/           # config, database, security (JWT)
-│   │   ├── models/         # SQLAlchemy ORM models
-│   │   ├── routers/        # FastAPI route handlers
-│   │   ├── schemas/        # Pydantic request/response schemas
-│   │   └── main.py
-│   ├── seed.py             # тестові дані
-│   └── requirements.txt
-└── frontend/
-    ├── app/
-    │   ├── (auth)/         # login page
-    │   ├── student/        # кабінет учня
-    │   ├── teacher/        # кабінет викладача
-    │   └── admin/          # адмін-панель
-    ├── components/
-    │   └── shared/         # Sidebar, UI components
-    ├── lib/
-    │   ├── api.ts          # API client
-    │   └── auth.ts         # JWT helpers
-    └── middleware.ts       # role-based routing
+├── backend/app/
+│   ├── core/              # config, database, security
+│   ├── models/            # User, LessonRequest (+ legacy ORM tables)
+│   ├── routers/
+│   │   ├── auth.py
+│   │   ├── student_optimate.py
+│   │   ├── teacher_optimate.py
+│   │   ├── admin_optimate.py
+│   │   └── lesson_requests.py
+│   ├── schemas/           # Pydantic (optimate, auth, lesson_request)
+│   └── services/          # Optimate client, cache, password vault
+├── frontend/
+│   ├── app/               # student/, teacher/, admin/, auth/
+│   ├── components/        # calendar, lesson-requests, shared UI
+│   └── lib/
+│       ├── auth.ts
+│       ├── optimate-api.ts
+│       ├── teacher-optimate-api.ts
+│       ├── admin-optimate-api.ts
+│       └── lesson-requests-api.ts
+└── docker-compose.yml
 ```
 
-## API ендпоінти
+## API (активні маршрути)
 
-| Method | Path | Роль | Опис |
-|---|---|---|---|
-| POST | /api/auth/login | public | Вхід, повертає JWT |
-| POST | /api/auth/register | public | Реєстрація |
-| GET | /api/users/me | all | Поточний користувач |
-| GET | /api/courses | all | Список курсів |
-| GET | /api/courses/{id}/progress | student | Курс з прогресом |
-| POST | /api/courses/{id}/lessons/{id}/complete | student | Завершити урок |
-| GET | /api/homework/my | student | Мої завдання |
-| POST | /api/homework/submit | student | Здати завдання |
-| GET | /api/homework/to-review | teacher | Черга перевірки |
-| POST | /api/homework/{id}/review | teacher | Перевірити, виставити оцінку |
-| GET | /api/schedule/my | all | Розклад |
-| GET | /api/schedule/balance | student | Баланс уроків |
-| GET | /api/admin/stats | admin | KPI школи |
-| GET | /api/admin/users | admin | Список користувачів |
-| POST | /api/sync/optimeite/pull | admin | Синхронізація з Оптімейт |
-| POST | /api/sync/sheets/pull | admin | Синхронізація Google Sheets |
-| POST | /api/auth/webhook/optimeite | system | Webhook нового учня |
+| Prefix | Опис |
+|---|---|
+| `/api/auth/*` | Вхід, refresh, профіль порталу |
+| `/api/student/optimate/*` | Баланси, події, транзакції, профіль учня |
+| `/api/teacher/optimate/*` | Учні, групи, розклад, події викладача |
+| `/api/admin/optimate/*` | KPI, користувачі CRM, календар усіх уроків |
+| `/api/lesson-requests/*` | Запити скасування / перенесення уроків |
+| `/api/health` | Health check |
 
-## Наступні кроки для масштабування
+## Optimate
 
-1. **Оптімейт інтеграція** — заповни `OPTIMEIT_BASE_URL` + `OPTIMEIT_API_KEY` в `.env`, реалізуй `sync.py`
-2. **Google Sheets sync** — додай `credentials.json`, реалізуй парсинг в `sync.py`
-3. **File uploads** → змін `STORAGE_BACKEND=s3` та заповни S3 credentials
-4. **PostgreSQL** → змін `DATABASE_URL=postgresql+asyncpg://...`
-5. **Email нотифікації** → додай `fastapi-mail` в `requirements.txt`
-6. **Redis кеш** → для Sheets sync та сесій
+У `backend/.env`:
+
+- `OPTIMATE_BASE_URL`, `OPTIMATE_API_KEY` — доступ до CRM  
+- `OPTIMATE_VERIFY_ON_LOGIN=true` — логін лише для email з Optimate  
+- `OPTIMATE_VERIFY_ON_LOGIN=false` — локальні seed-акаунти  
+
+## UI-заглушки
+
+У навігації залишені сторінки без бекенду (курси, домашні завдання, словник тощо) — для майбутнього функціоналу LMS.

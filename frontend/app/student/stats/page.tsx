@@ -62,12 +62,12 @@ export default function StudentStats() {
         {/* Skills breakdown */}
         <Card title="Навички">
           {skills.map(s => (
-            <div key={s.label} style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
-              <div style={{ fontSize: 12, color: 'var(--tx)', width: 90, flexShrink: 0 }}>{s.label}</div>
-              <div style={{ flex: 1 }}>
+            <div key={s.label} className="skill-bar-row">
+              <div className="skill-bar-label">{s.label}</div>
+              <div className="skill-bar-track">
                 <ProgressBar pct={s.pct} color={s.pct >= 70 ? 'var(--t)' : s.pct >= 55 ? 'var(--p)' : 'var(--a)'} small />
               </div>
-              <div style={{ fontSize: 11, color: 'var(--tx2)', width: 32, textAlign: 'right' }}>{s.pct}%</div>
+              <div className="skill-bar-pct">{s.pct}%</div>
             </div>
           ))}
         </Card>

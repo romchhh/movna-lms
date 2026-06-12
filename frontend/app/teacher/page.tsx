@@ -1,11 +1,15 @@
 'use client'
 
 import { EventsCalendar } from '@/components/calendar/EventsCalendar'
+import { HomeworkPendingAlert } from '@/components/homework/HomeworkPendingAlert'
+import { PendingRequestsAlert } from '@/components/lesson-requests/PendingRequestsAlert'
+import { TeacherLessonStatsPanel } from '@/components/teacher/TeacherLessonStatsPanel'
 import { TeacherStudentDetailModal } from '@/components/teacher/TeacherStudentDetailModal'
 import { Badge, Card, Empty, PageHeader, StatCard } from '@/components/shared/UI'
-import { toCalendarEvent } from '@/lib/calendar-types'
 import { eventDateKey, formatTimeRange } from '@/lib/calendar-utils'
-import { TeacherEvent, TeacherStudent, teacherOptimateApi } from '@/lib/teacher-optimate-api'
+import { optimateEventToCalendarEvent } from '@/lib/optimate-api'
+import { studentInitials } from '@/lib/optimate-ui'
+import { TeacherEvent, TeacherStudent, teacherOptimateApi, type TeacherLessonStats } from '@/lib/teacher-optimate-api'
 import Link from 'next/link'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 
@@ -14,16 +18,6 @@ const UK_MONTH = [
   'січня', 'лютого', 'березня', 'квітня', 'травня', 'червня',
   'липня', 'серпня', 'вересня', 'жовтня', 'листопада', 'грудня',
 ]
-
-function studentInitials(name: string): string {
-  return name
-    .split(/\s+/)
-    .filter(Boolean)
-    .map(part => part[0])
-    .join('')
-    .slice(0, 2)
-    .toUpperCase()
-}
 
 function formatTodayLabel() {
   const now = new Date()
@@ -38,6 +32,7 @@ export default function TeacherDashboard() {
   const [students, setStudents] = useState<TeacherStudent[]>([])
   const [studentsTotal, setStudentsTotal] = useState(0)
   const [events, setEvents] = useState<TeacherEvent[]>([])
+  const [lessonStats, setLessonStats] = useState<TeacherLessonStats | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [selectedId, setSelectedId] = useState<string | null>(null)
@@ -47,13 +42,15 @@ export default function TeacherDashboard() {
     setLoading(true)
     setError('')
     try {
-      const [studentsRes, eventsRes] = await Promise.all([
+      const [studentsRes, eventsRes, statsRes] = await Promise.all([
         teacherOptimateApi.students(1, 8),
         teacherOptimateApi.events(1, 14),
+        teacherOptimateApi.lessonStats(),
       ])
       setStudents(studentsRes.data)
       setStudentsTotal(studentsRes.total)
       setEvents(eventsRes.data)
+      setLessonStats(statsRes)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Помилка завантаження')
     } finally {
@@ -82,20 +79,7 @@ export default function TeacherDashboard() {
       .filter(e => e.completion_label !== 'Скасовано')
       .filter(e => new Date(e.starts_at).getTime() >= Date.now() - 60 * 60 * 1000)
       .sort((a, b) => a.starts_at.localeCompare(b.starts_at))
-      .map(e => toCalendarEvent({
-        id: e.id,
-        starts_at: e.starts_at,
-        ends_at: e.ends_at,
-        duration: e.duration,
-        product_name: e.product_name,
-        product_type_label: e.product_type_label,
-        student_names: e.student_names,
-        student_ids: e.student_ids,
-        completion_label: e.completion_label,
-        schedule_class: e.schedule_class,
-        product_type: e.product_type,
-        is_trial: e.is_trial,
-      })),
+      .map(optimateEventToCalendarEvent),
     [events],
   )
 
@@ -106,8 +90,12 @@ export default function TeacherDashboard() {
       </PageHeader>
 
       {error && <div className="alert">{error}</div>}
+      <PendingRequestsAlert href="/teacher/requests" />
+      <HomeworkPendingAlert />
 
-      <div className="g4 dash-stats">
+      <TeacherLessonStatsPanel stats={lessonStats} loading={loading} />
+
+      <div className="g4 dash-stats" style={{ marginTop: 14 }}>
         <StatCard
           label="Моїх учнів"
           value={loading ? '…' : studentsTotal}

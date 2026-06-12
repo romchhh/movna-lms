@@ -17,7 +17,7 @@ export default function AdminCourses() {
       </PageHeader>
 
       {/* Info banner */}
-      <div style={{ background: 'var(--tl)', border: '.5px solid var(--t)', borderRadius: 'var(--r8)', padding: '12px 16px', fontSize: 13, color: 'var(--td)', display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+      <div className="admin-course-banner" style={{ background: 'var(--tl)', border: '.5px solid var(--t)', borderRadius: 'var(--r8)', padding: '12px 16px', fontSize: 13, color: 'var(--td)' }}>
         <span style={{ fontSize: 16 }}>📋</span>
         <div>
           <strong>Google Sheets = джерело програми.</strong> Методист редагує таблицю → натискає «Синх. Sheets» → LMS оновлює курс автоматично. Розробники не потрібні.
@@ -43,17 +43,17 @@ export default function AdminCourses() {
                 </div>
 
                 {/* Sheets link */}
-                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                  <div style={{ flex: 1, display: 'flex', gap: 6 }}>
+                <div className="admin-course-actions">
+                  <div className="admin-course-sheets-row">
                     <input
                       className="input"
                       defaultValue={c.sheets}
                       placeholder="Google Sheets URL..."
                       style={{ fontSize: 12 }}
                     />
-                    <button className="btn btn-teal btn-sm" style={{ whiteSpace: 'nowrap' }}>⟳ Синх.</button>
+                    <button type="button" className="btn btn-teal btn-sm">⟳ Синх.</button>
                   </div>
-                  <button className="btn btn-secondary btn-sm">✏ Редаг.</button>
+                  <button type="button" className="btn btn-secondary btn-sm">✏ Редаг.</button>
                 </div>
               </div>
             </div>

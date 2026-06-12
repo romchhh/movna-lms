@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useState, type CSSProperties } from 'react'
+import { BirthDateFields } from '@/components/settings/BirthDateFields'
 import { Card } from '@/components/shared/UI'
 import {
   optimateApi,
@@ -122,8 +123,8 @@ export function OptimateProfileCard({ role }: { role: Role }) {
           first_name: fn,
           last_name: ln,
           chat_url: chatUrl.trim(),
+          birth_date: birth,
         }
-        if (birth) payload.birth_date = birth
         const updated = await optimateApi.updateProfile(payload)
         applyStudent(updated)
       } else {
@@ -135,7 +136,7 @@ export function OptimateProfileCard({ role }: { role: Role }) {
         const updated = await teacherOptimateApi.updateProfile(payload)
         applyTeacher(updated)
       }
-      setSuccess('Збережено')
+      setSuccess('Збережено в Optimate')
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Не вдалося зберегти')
     } finally {
@@ -157,6 +158,11 @@ export function OptimateProfileCard({ role }: { role: Role }) {
 
   return (
     <Card title={title}>
+      <p style={{ fontSize: 12, color: 'var(--tx2)', margin: '0 0 12px' }}>
+        {role === 'student'
+          ? 'Ім’я, прізвище та дата народження синхронізуються з Optimate CRM.'
+          : 'Ім’я та опис синхронізуються з Optimate CRM.'}
+      </p>
       <div style={fieldGap()}>
         {error && (
           <p style={{ fontSize: 13, color: 'var(--rd)', margin: 0 }}>{error}</p>
@@ -221,32 +227,15 @@ export function OptimateProfileCard({ role }: { role: Role }) {
             </div>
             <div>
               <label style={labelStyle()}>Дата народження</label>
-              <div style={{ display: 'flex', gap: 8 }}>
-                <input
-                  className="input"
-                  value={birthDay}
-                  onChange={e => setBirthDay(e.target.value)}
-                  placeholder="День"
-                  inputMode="numeric"
-                  style={{ flex: 1 }}
-                />
-                <input
-                  className="input"
-                  value={birthMonth}
-                  onChange={e => setBirthMonth(e.target.value)}
-                  placeholder="Місяць"
-                  inputMode="numeric"
-                  style={{ flex: 1 }}
-                />
-                <input
-                  className="input"
-                  value={birthYear}
-                  onChange={e => setBirthYear(e.target.value)}
-                  placeholder="Рік"
-                  inputMode="numeric"
-                  style={{ flex: 1.2 }}
-                />
-              </div>
+              <BirthDateFields
+                day={birthDay}
+                month={birthMonth}
+                year={birthYear}
+                onDayChange={setBirthDay}
+                onMonthChange={setBirthMonth}
+                onYearChange={setBirthYear}
+                accent="purple"
+              />
             </div>
           </>
         ) : (

@@ -3,13 +3,15 @@
 import { AdminOptimateSyncBar } from '@/components/admin/AdminOptimateSyncBar'
 import { OptimateEntityModal } from '@/components/admin/OptimateEntityModal'
 import { PageHeader, Badge, Card, Empty, Pagination } from '@/components/shared/UI'
+import { FilterChipBar } from '@/components/shared/FilterChipBar'
 import {
   StudentListItem,
   adminOptimateApi,
-  statusBadgeVariant,
   zipStudentTeachers,
 } from '@/lib/admin-optimate-api'
 import { CacheMeta } from '@/lib/optimate-api'
+import { statusBadgeVariant } from '@/lib/optimate-ui'
+import { useDebouncedValue } from '@/hooks/useDebouncedValue'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 
 const PAGE_SIZE = 50
@@ -61,7 +63,7 @@ export default function AdminStudents() {
   const [page, setPage] = useState(1)
   const [cache, setCache] = useState<CacheMeta | null>(null)
   const [search, setSearch] = useState('')
-  const [debouncedSearch, setDebouncedSearch] = useState('')
+  const debouncedSearch = useDebouncedValue(search)
   const [filter, setFilter] = useState<'all' | 'active' | 'low'>('all')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -78,11 +80,6 @@ export default function AdminStudents() {
   const [teacherDetailCache, setTeacherDetailCache] = useState<CacheMeta | null>(null)
   const [teacherDetailLoading, setTeacherDetailLoading] = useState(false)
   const [teacherDetailError, setTeacherDetailError] = useState('')
-
-  useEffect(() => {
-    const t = setTimeout(() => setDebouncedSearch(search), 350)
-    return () => clearTimeout(t)
-  }, [search])
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -194,21 +191,15 @@ export default function AdminStudents() {
           onChange={e => { setSearch(e.target.value); setPage(1) }}
           style={{ maxWidth: 280 }}
         />
-        {(['all', 'active', 'low'] as const).map(f => (
-          <button
-            key={f}
-            type="button"
-            onClick={() => setFilter(f)}
-            className="btn btn-sm"
-            style={{
-              background: filter === f ? 'var(--pl)' : 'var(--bg2)',
-              color: filter === f ? 'var(--pd)' : 'var(--tx2)',
-              border: `.5px solid ${filter === f ? 'var(--pm)' : 'var(--bd2)'}`,
-            }}
-          >
-            {{ all: 'Всі', active: 'Активні', low: 'Малий баланс' }[f]}
-          </button>
-        ))}
+        <FilterChipBar
+          value={filter}
+          onChange={f => setFilter(f)}
+          chips={[
+            { key: 'all', label: 'Всі' },
+            { key: 'active', label: 'Активні' },
+            { key: 'low', label: 'Малий баланс' },
+          ]}
+        />
       </div>
 
       <Card>

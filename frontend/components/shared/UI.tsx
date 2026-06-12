@@ -46,9 +46,19 @@ export function Avatar({ initials, bg, color, size = 32 }: { initials: string; b
 }
 
 // ── Card ────────────────────────────────────────────────────────────────────
-export function Card({ title, children, action }: { title?: string; children: React.ReactNode; action?: React.ReactNode }) {
+export function Card({
+  title,
+  children,
+  action,
+  className,
+}: {
+  title?: string
+  children: React.ReactNode
+  action?: React.ReactNode
+  className?: string
+}) {
   return (
-    <div className="card">
+    <div className={className ? `card ${className}` : 'card'}>
       {title && (
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 11 }}>
           <div className="card-title" style={{ marginBottom: 0 }}>{title}</div>

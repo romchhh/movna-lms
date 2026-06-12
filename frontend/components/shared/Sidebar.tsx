@@ -1,5 +1,6 @@
 'use client'
 
+import { clearSession, homeForRole } from '@/lib/auth'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 
@@ -7,6 +8,7 @@ export interface NavItem {
   href: string
   label: string
   icon: React.ReactNode
+  badge?: number
 }
 
 export interface SidebarProps {
@@ -41,12 +43,13 @@ export default function Sidebar({
   const router = useRouter()
 
   function logout() {
-    document.cookie = 'token=; path=/; max-age=0'
+    clearSession()
     onNavigate?.()
     router.push('/auth/login')
   }
 
   const roleLabels = { student: 'Учень', teacher: 'Викладач', admin: 'Адмін' }
+  const homeHref = homeForRole(role)
 
   return (
     <aside
@@ -59,7 +62,7 @@ export default function Sidebar({
       }
     >
       <div className="sidebar-header">
-        <div className="sidebar-logo">
+        <Link href={homeHref} className="sidebar-logo" onClick={onNavigate} aria-label="На головну">
           <img
             src="/branding/movna-logo.svg"
             alt="Movna"
@@ -67,7 +70,7 @@ export default function Sidebar({
             width={157}
             height={36}
           />
-        </div>
+        </Link>
         <button
           type="button"
           className="sidebar-close"
@@ -96,6 +99,9 @@ export default function Sidebar({
                 >
                   <span className="nav-icon">{item.icon}</span>
                   <span className="nav-label">{item.label}</span>
+                  {(item.badge ?? 0) > 0 && (
+                    <span className="nav-badge">{item.badge}</span>
+                  )}
                 </Link>
               )
             })}

@@ -3,4 +3,5 @@ source venv/bin/activate
 uvicorn app.main:app --reload --port 8000
 
 cd frontend
+cp .env.example .env.local   # NEXT_PUBLIC_API_URL=http://localhost:8000
 npm run dev

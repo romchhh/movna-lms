@@ -106,30 +106,52 @@ def parse_student_notes(notes: Any) -> list[dict[str, Any]]:
     return parsed
 
 
+def _product_remaining_lessons(product: dict[str, Any]) -> float:
+    financial = product.get("financial") or {}
+    if isinstance(financial, dict):
+        for key in (
+            "lessonsRemaining",
+            "remainingLessons",
+            "remaining",
+            "availableLessons",
+        ):
+            val = financial.get(key)
+            if val is not None:
+                try:
+                    return float(val)
+                except (TypeError, ValueError):
+                    continue
+    direct = product.get("remainingLessonCount")
+    if direct is not None:
+        try:
+            return float(direct)
+        except (TypeError, ValueError):
+            pass
+    return 0.0
+
+
 def _sum_remaining_lessons(products: Any) -> float:
     if not isinstance(products, list):
         return 0.0
-    total = 0.0
-    for product in products:
-        if not isinstance(product, dict):
-            continue
-        financial = product.get("financial") or {}
-        if isinstance(financial, dict):
-            for key in ("lessonsRemaining", "remainingLessons", "remaining", "balance"):
-                val = financial.get(key)
-                if val is not None:
-                    try:
-                        total += float(val)
-                        break
-                    except (TypeError, ValueError):
-                        continue
-        direct = product.get("remainingLessonCount")
-        if direct is not None:
-            try:
-                total += float(direct)
-            except (TypeError, ValueError):
-                pass
-    return total
+    return sum(
+        _product_remaining_lessons(product)
+        for product in products
+        if isinstance(product, dict)
+    )
+
+
+def _resolve_student_remaining(item: dict[str, Any]) -> float:
+    from_products = _sum_remaining_lessons(item.get("products"))
+    top_raw = item.get("remainingLessonCount")
+    if top_raw is not None:
+        try:
+            top = float(top_raw)
+        except (TypeError, ValueError):
+            top = 0.0
+        if from_products > 0:
+            return from_products
+        return top
+    return from_products
 
 
 def person_display_name(person: dict[str, Any]) -> str:
@@ -200,13 +222,7 @@ def _products_summary(products: Any) -> list[dict[str, Any]]:
         if not isinstance(product, dict):
             continue
         financial = product.get("financial") if isinstance(product.get("financial"), dict) else {}
-        remaining = OptimateClient._first_number(
-            financial,
-            "lessonsRemaining",
-            "remainingLessons",
-            "remaining",
-            "balance",
-        )
+        remaining = _product_remaining_lessons(product)
         total = OptimateClient._first_number(
             financial,
             "lessonsPurchased",
@@ -233,9 +249,7 @@ def parse_student_list_item(item: dict[str, Any]) -> dict[str, Any]:
     status = int(item.get("status") or 0)
     skill = item.get("avgSkillLevel")
 
-    remaining = item.get("remainingLessonCount")
-    if remaining is None:
-        remaining = _sum_remaining_lessons(item.get("products"))
+    remaining = _resolve_student_remaining(item)
 
     teacher_pairs = collect_student_teacher_pairs(item)
 
@@ -272,9 +286,7 @@ def parse_teacher_student_item(item: dict[str, Any]) -> dict[str, Any]:
     status = int(item.get("status") or 0)
     skill = item.get("avgSkillLevel")
 
-    remaining = item.get("remainingLessonCount")
-    if remaining is None:
-        remaining = _sum_remaining_lessons(item.get("products"))
+    remaining = _resolve_student_remaining(item)
 
     products_summary = _products_summary(item.get("products"))
     product_names = [p["product_name"] for p in products_summary if p.get("product_name")]
@@ -408,6 +420,22 @@ def enrich_teacher_detail(raw: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def schedule_class_from_product_type(
+    product_type_int: Optional[int],
+    *,
+    student_count: int = 0,
+) -> str:
+    if product_type_int == 2:
+        return "group"
+    if product_type_int == 3:
+        return "speaking_club"
+    if product_type_int == 4:
+        return "pair"
+    if student_count > 1:
+        return "group"
+    return "individual"
+
+
 def _completion_label(is_completed: Any) -> str:
     if is_completed is True:
         return COMPLETION_LABELS["completed"]
@@ -536,6 +564,10 @@ def parse_admin_event(item: dict[str, Any]) -> dict[str, Any]:
         "student_ids": student_ids,
         "teacher_names": teacher_names,
         "teacher_ids": teacher_ids,
+        "schedule_class": schedule_class_from_product_type(
+            product_type_int,
+            student_count=len(student_names),
+        ),
     }
 
 

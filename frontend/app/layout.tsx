@@ -1,4 +1,5 @@
 import './globals.css'
+import { AuthSessionBoot } from '@/components/auth/AuthSessionBoot'
 import type { Metadata, Viewport } from 'next'
 
 export const metadata: Metadata = {
@@ -15,7 +16,10 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="uk">
-      <body>{children}</body>
+      <body>
+        <AuthSessionBoot />
+        {children}
+      </body>
     </html>
   )
 }

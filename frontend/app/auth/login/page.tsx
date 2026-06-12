@@ -1,5 +1,14 @@
 'use client'
 
+import {
+  decodePayload,
+  ensureValidSession,
+  getToken,
+  homeForRole,
+  loadLoginCredentials,
+  saveLoginCredentials,
+  setSession,
+} from '@/lib/auth'
 import { Suspense, useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 
@@ -8,13 +17,35 @@ function LoginForm() {
   const searchParams = useSearchParams()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [rememberMe, setRememberMe] = useState(true)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [checkingSession, setCheckingSession] = useState(true)
 
   useEffect(() => {
     const urlError = searchParams.get('error')
     if (urlError) setError(decodeURIComponent(urlError))
-  }, [searchParams])
+
+    const saved = loadLoginCredentials()
+    if (saved) {
+      setEmail(saved.email)
+      setPassword(saved.password)
+      setRememberMe(true)
+    }
+
+    ;(async () => {
+      const ok = await ensureValidSession()
+      if (ok) {
+        const token = getToken()
+        const role = token ? decodePayload(token)?.role : null
+        if (role) {
+          router.replace(homeForRole(role))
+          return
+        }
+      }
+      setCheckingSession(false)
+    })()
+  }, [router, searchParams])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -24,7 +55,7 @@ function LoginForm() {
       const res = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email, password, remember_me: rememberMe }),
       })
       if (!res.ok) {
         const d = await res.json()
@@ -38,10 +69,9 @@ function LoginForm() {
         )
       }
       const data = await res.json()
-      document.cookie = `token=${data.access_token}; path=/; max-age=${60 * 60 * 24}`
-      if (data.role === 'admin') router.push('/admin')
-      else if (data.role === 'teacher') router.push('/teacher')
-      else router.push('/student')
+      setSession(data.access_token, data.refresh_token, rememberMe)
+      saveLoginCredentials(email, password, rememberMe)
+      router.push(homeForRole(data.role))
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Помилка')
     } finally {
@@ -51,6 +81,16 @@ function LoginForm() {
 
   function handleGoogleLogin() {
     window.location.href = '/api/auth/google/login'
+  }
+
+  if (checkingSession) {
+    return (
+      <div className="login-page">
+        <div className="login-card login-card--centered">
+          <p className="login-subtitle">Перевірка сесії...</p>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -80,27 +120,41 @@ function LoginForm() {
 
         <form onSubmit={handleSubmit} className="login-form">
           <div>
-            <label className="login-label">Email</label>
+            <label className="login-label" htmlFor="login-email">Email</label>
             <input
+              id="login-email"
               className="input"
               type="email"
               placeholder="your@email.com"
               value={email}
               onChange={e => setEmail(e.target.value)}
+              autoComplete="email"
               required
             />
           </div>
           <div>
-            <label className="login-label">Пароль</label>
+            <label className="login-label" htmlFor="login-password">Пароль</label>
             <input
+              id="login-password"
               className="input"
               type="password"
               placeholder="••••••••"
               value={password}
               onChange={e => setPassword(e.target.value)}
+              autoComplete={rememberMe ? 'current-password' : 'off'}
               required
             />
           </div>
+
+          <label className="login-remember">
+            <input
+              type="checkbox"
+              checked={rememberMe}
+              onChange={e => setRememberMe(e.target.checked)}
+            />
+            <span>Запамʼятати мене</span>
+          </label>
+
           <button
             type="submit"
             className="btn btn-primary btn-full"

@@ -27,19 +27,13 @@ from app.services.optimate_cache import (
     invalidate_admin_student_detail,
     invalidate_student_cache,
 )
+from app.routers.optimate_router_helpers import cache_meta, ensure_optimate_configured
 from app.services.optimate_profile import (
     build_student_patch,
     student_profile_out,
 )
 
 router = APIRouter()
-
-
-def _cache_meta(cached_at: float, from_cache: bool) -> CacheMeta:
-    return CacheMeta(
-        cached=from_cache,
-        synced_at=datetime.fromtimestamp(cached_at, tz=timezone.utc),
-    )
 
 
 async def _resolve_student_id(user: User, db: AsyncSession) -> str:
@@ -112,18 +106,12 @@ def _event_out(item) -> EventOut:
     )
 
 
-def _ensure_optimate() -> None:
-    client = get_optimate_client()
-    if not client.is_configured:
-        raise HTTPException(status_code=503, detail="Optimate API не налаштовано")
-
-
 @router.get("/profile", response_model=StudentProfileOut)
 async def student_profile(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_role(UserRole.STUDENT)),
 ):
-    _ensure_optimate()
+    ensure_optimate_configured()
     student_id = await _resolve_student_id(current_user, db)
     client = get_optimate_client()
     raw = await client.get_student_by_id(student_id, include=PROFILE_INCLUDE)
@@ -138,19 +126,22 @@ async def update_student_profile(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_role(UserRole.STUDENT)),
 ):
-    _ensure_optimate()
+    ensure_optimate_configured()
     payload = build_student_patch(body)
     if not payload:
         raise HTTPException(status_code=400, detail="Немає полів для оновлення")
 
     student_id = await _resolve_student_id(current_user, db)
     client = get_optimate_client()
-    updated, status = await client.update_student(student_id, payload)
-    if status == 404 or not updated:
-        raise HTTPException(
-            status_code=404 if status == 404 else 502,
-            detail="Не вдалося оновити профіль в Optimate",
-        )
+    _updated, status = await client.update_student(student_id, payload)
+    if status == 404:
+        raise HTTPException(status_code=404, detail="Профіль не знайдено в Optimate")
+    if status >= 400:
+        raise HTTPException(status_code=502, detail="Не вдалося оновити профіль в Optimate")
+
+    raw = await client.get_student_by_id(student_id, include=PROFILE_INCLUDE)
+    if not raw:
+        raise HTTPException(status_code=502, detail="Профіль оновлено, але не вдалося завантажити дані")
 
     if body.first_name is not None:
         current_user.first_name = body.first_name.strip()
@@ -160,7 +151,7 @@ async def update_student_profile(
 
     invalidate_student_cache(student_id)
     invalidate_admin_student_detail(student_id)
-    return student_profile_out(updated)
+    return student_profile_out(raw)
 
 
 @router.post("/refresh", status_code=204)
@@ -179,7 +170,7 @@ async def student_overview(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_role(UserRole.STUDENT)),
 ):
-    _ensure_optimate()
+    ensure_optimate_configured()
     student_id = await _resolve_student_id(current_user, db)
 
     balances, bal_at, bal_cached = await get_cached_balances(
@@ -214,12 +205,12 @@ async def student_balances(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_role(UserRole.STUDENT)),
 ):
-    _ensure_optimate()
+    ensure_optimate_configured()
     student_id = await _resolve_student_id(current_user, db)
     balances, cached_at, from_cache = await get_cached_balances(
         student_id, force_refresh=refresh,
     )
-    meta = _cache_meta(cached_at, from_cache)
+    meta = cache_meta(cached_at, from_cache)
     return BalancesResponse(
         data=[_balance_out(b) for b in balances],
         cache=meta,
@@ -234,7 +225,7 @@ async def student_transactions(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_role(UserRole.STUDENT)),
 ):
-    _ensure_optimate()
+    ensure_optimate_configured()
     student_id = await _resolve_student_id(current_user, db)
     (items, total), cached_at, from_cache = await get_cached_transactions(
         student_id,
@@ -247,7 +238,7 @@ async def student_transactions(
         total=total,
         page=page,
         page_size=page_size,
-        cache=_cache_meta(cached_at, from_cache),
+        cache=cache_meta(cached_at, from_cache),
     )
 
 
@@ -259,7 +250,7 @@ async def student_events(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_role(UserRole.STUDENT)),
 ):
-    _ensure_optimate()
+    ensure_optimate_configured()
     student_id = await _resolve_student_id(current_user, db)
     (items, total, date_from, date_to), cached_at, from_cache = await get_cached_events(
         student_id,
@@ -272,5 +263,5 @@ async def student_events(
         total=total,
         date_from=date_from,
         date_to=date_to,
-        cache=_cache_meta(cached_at, from_cache),
+        cache=cache_meta(cached_at, from_cache),
     )

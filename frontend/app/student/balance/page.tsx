@@ -25,7 +25,7 @@ function BalanceCard({ product }: { product: ProductBalance }) {
 
       <div style={{ marginBottom: 16 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 4 }}>
-          <div style={{ fontSize: 36, fontWeight: 700, color: 'var(--tx)' }}>
+          <div className="student-balance-hero" style={{ fontSize: 36, fontWeight: 700, color: 'var(--tx)' }}>
             {product.lessons_remaining}
           </div>
           {low && <Badge variant="amber">⚠ Мало</Badge>}

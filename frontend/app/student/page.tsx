@@ -1,22 +1,26 @@
 'use client'
 
 import { EventsCalendar } from '@/components/calendar/EventsCalendar'
-import { Badge, ProgressBar } from '@/components/shared/UI'
-import { toCalendarEvent } from '@/lib/calendar-types'
+import { HomeworkAlert } from '@/components/homework/HomeworkAlert'
+import { HomeworkStudentModal } from '@/components/homework/HomeworkStudentModal'
+import { Badge, PageHeader, ProgressBar, StatCard } from '@/components/shared/UI'
+import { formatTimeRange } from '@/lib/calendar-utils'
+import type { CalendarEvent } from '@/lib/calendar-types'
 import {
   PRODUCT_ACCENT,
   StudentOverview,
-  formatEventTimeRange,
   isEventActive,
   optimateApi,
+  optimateEventToCalendarEvent,
 } from '@/lib/optimate-api'
 import Link from 'next/link'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 
 export default function StudentDashboard() {
   const [overview, setOverview] = useState<StudentOverview | null>(null)
-  const [scheduleEvents, setScheduleEvents] = useState<ReturnType<typeof toCalendarEvent>[]>([])
+  const [scheduleEvents, setScheduleEvents] = useState<CalendarEvent[]>([])
   const [loading, setLoading] = useState(true)
+  const [hwModalId, setHwModalId] = useState<number | null>(null)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -26,21 +30,7 @@ export default function StudentDashboard() {
         optimateApi.events(7, 21),
       ])
       setOverview(ov)
-      setScheduleEvents(ev.data.map(e => toCalendarEvent({
-        id: e.id,
-        starts_at: e.starts_at,
-        ends_at: e.ends_at,
-        duration: e.duration,
-        product_name: e.product_name,
-        product_type_label: e.product_type_label,
-        teacher_name: e.teacher_name,
-        teacher_names: e.teacher_names,
-        teacher_ids: e.teacher_ids,
-        completion_label: e.completion_label,
-        schedule_class: e.schedule_class,
-        product_type: e.product_type,
-        is_trial: e.is_trial,
-      })))
+      setScheduleEvents(ev.data.map(optimateEventToCalendarEvent))
     } catch {
       setOverview(null)
       setScheduleEvents([])
@@ -60,44 +50,36 @@ export default function StudentDashboard() {
 
   return (
     <>
-      <div className="page-header">
-        <div className="page-header-text">
-          <h2>Дашборд</h2>
-          <p>
-            {loading
-              ? 'Завантаження даних з Optimate...'
-              : 'Ваші баланси та найближчі заняття'}
-          </p>
-        </div>
-      </div>
+      <PageHeader
+        title="Дашборд"
+        sub={loading ? 'Завантаження даних з Optimate...' : 'Ваші баланси та найближчі заняття'}
+      />
+
+      <HomeworkAlert onOpen={id => setHwModalId(id)} />
 
       <div className="g4 dash-stats">
-        <div className="stat-card">
-          <div className="stat-label">Залишок уроків</div>
-          <div className="stat-value">{loading ? '…' : totalRemaining}</div>
-          <div className="stat-sub">по всіх продуктах</div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-label">Продуктів</div>
-          <div className="stat-value">{loading ? '…' : overview?.balances.length ?? 0}</div>
-          <div className="stat-sub">активних балансів</div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-label">Найближче заняття</div>
-          <div className="stat-value" style={{ fontSize: nextEvent ? 22 : 32 }}>
-            {loading ? '…' : nextEvent
-              ? new Intl.DateTimeFormat('uk-UA', { day: '2-digit', month: '2-digit' }).format(new Date(nextEvent.starts_at))
-              : '—'}
-          </div>
-          <div className="stat-sub">
-            {nextEvent ? formatEventTimeRange(nextEvent.starts_at, nextEvent.ends_at) : 'немає в календарі'}
-          </div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-label">Транзакції</div>
-          <div className="stat-value">{loading ? '…' : overview?.recent_transactions.length ?? 0}</div>
-          <div className="stat-sub">останніх операцій</div>
-        </div>
+        <StatCard
+          label="Залишок уроків"
+          value={loading ? '…' : totalRemaining}
+          sub="по всіх продуктах"
+        />
+        <StatCard
+          label="Продуктів"
+          value={loading ? '…' : overview?.balances.length ?? 0}
+          sub="активних балансів"
+        />
+        <StatCard
+          label="Найближче заняття"
+          value={loading ? '…' : nextEvent
+            ? new Intl.DateTimeFormat('uk-UA', { day: '2-digit', month: '2-digit' }).format(new Date(nextEvent.starts_at))
+            : '—'}
+          sub={nextEvent ? formatTimeRange(nextEvent.starts_at, nextEvent.ends_at) : 'немає в календарі'}
+        />
+        <StatCard
+          label="Транзакції"
+          value={loading ? '…' : overview?.recent_transactions.length ?? 0}
+          sub="останніх операцій"
+        />
       </div>
 
       <div className="g2">
@@ -120,7 +102,7 @@ export default function StudentDashboard() {
                     {' '}{product.lessons_remaining} з {product.lessons_total} залишилось
                   </div>
                 </div>
-                <div style={{ minWidth: 120 }}>
+                <div className="optimate-dash-balance-progress" style={{ minWidth: 120 }}>
                   <ProgressBar pct={pct} color={accent.color} small />
                 </div>
               </div>
@@ -139,6 +121,9 @@ export default function StudentDashboard() {
             emptyLabel="Занять не знайдено"
             defaultView="week"
             embed
+            enableLessonRequests
+            enableStudentHomework
+            onOpenHomework={id => setHwModalId(id)}
           />
           <Link
             href="/student/schedule"
@@ -168,7 +153,7 @@ export default function StudentDashboard() {
                     {nextEvent.product_name || nextEvent.product_type_label}
                   </div>
                   <div style={{ fontSize: 12, color: 'var(--tx2)', marginTop: 4 }}>
-                    {formatEventTimeRange(nextEvent.starts_at, nextEvent.ends_at)}
+                    {formatTimeRange(nextEvent.starts_at, nextEvent.ends_at)}
                     {nextEvent.teacher_name ? ` · ${nextEvent.teacher_name}` : ''}
                   </div>
                 </div>
@@ -207,6 +192,11 @@ export default function StudentDashboard() {
           </div>
         </div>
       </div>
+      <HomeworkStudentModal
+        submissionId={hwModalId}
+        onClose={() => setHwModalId(null)}
+        onUpdated={() => {}}
+      />
     </>
   )
 }

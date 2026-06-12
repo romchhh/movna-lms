@@ -19,7 +19,7 @@ export default function AdminSettings() {
               <label style={{ fontSize: 12, color: 'var(--tx2)', display: 'block', marginBottom: 5 }}>API Key</label>
               <input className="input" type="password" placeholder="sk-..." />
             </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: 11, background: 'var(--bg2)', borderRadius: 'var(--r8)' }}>
+            <div className="admin-settings-toggle-row">
               <div>
                 <div style={{ fontSize: 13, color: 'var(--tx)' }}>Webhook для нових учнів</div>
                 <div style={{ fontSize: 11, color: 'var(--tx2)', marginTop: 2 }}>Авто-створення акаунту при реєстрації</div>
