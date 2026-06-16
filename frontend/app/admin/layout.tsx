@@ -23,7 +23,8 @@ const sections = [
       { href: '/admin/teachers', label: 'Викладачі', icon: <TeacherNavIcon /> },
       { href: '/admin/events', label: 'Події', icon: <CalendarNavIcon /> },
       { href: '/admin/requests', label: 'Запити', icon: <RequestsNavIcon /> },
-      { href: '/admin/courses', label: 'Курси та програми', icon: <CourseNavIcon /> },
+      { href: '/admin/curricula', label: 'Навчальні програми', icon: <CourseNavIcon /> },
+      { href: '/admin/courses', label: 'Курси', icon: <CourseNavIcon /> },
     ],
   },
   {
@@ -45,6 +46,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         accentBg: 'var(--rl)',
         sections,
         requestsHref: '/admin/requests',
+        mobileTabHrefs: [
+          '/admin',
+          '/admin/students',
+          '/admin/events',
+          '/admin/requests',
+        ],
       }}
     >
       {children}

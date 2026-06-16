@@ -9,6 +9,7 @@ import {
   RequestsNavIcon,
   SettingsNavIcon,
   StudentsNavIcon,
+  CourseNavIcon,
 } from '@/components/shared/NavIcons'
 
 const sections = [
@@ -26,6 +27,7 @@ const sections = [
   {
     label: 'Матеріали',
     items: [
+      { href: '/teacher/curricula', label: 'Навчальні програми', icon: <CourseNavIcon /> },
       { href: '/teacher/grades', label: 'Журнал оцінок', icon: <GradesNavIcon /> },
       { href: '/teacher/materials', label: 'Матеріали', icon: <MaterialsNavIcon /> },
     ],
@@ -50,6 +52,12 @@ export default function TeacherLayout({ children }: { children: React.ReactNode 
         sections,
         requestsHref: '/teacher/requests',
         homeworkHref: '/teacher/homework',
+        mobileTabHrefs: [
+          '/teacher',
+          '/teacher/students',
+          '/teacher/homework',
+          '/teacher/schedule',
+        ],
       }}
     >
       {children}

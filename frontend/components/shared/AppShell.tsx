@@ -3,73 +3,71 @@
 import { homeForRole } from '@/lib/auth'
 import Link from 'next/link'
 import { useCallback, useEffect, useState } from 'react'
-import { usePathname } from 'next/navigation'
+import BottomNav from './BottomNav'
 import Sidebar, { type SidebarProps } from './Sidebar'
+
+const SIDEBAR_COLLAPSED_KEY = 'movna-sidebar-collapsed'
 
 interface AppShellProps {
   children: React.ReactNode
-  sidebar: SidebarProps
+  sidebar: SidebarProps & { mobileTabHrefs?: string[] }
 }
 
 export default function AppShell({ children, sidebar }: AppShellProps) {
-  const pathname = usePathname()
-  const [menuOpen, setMenuOpen] = useState(false)
-
-  const closeMenu = useCallback(() => setMenuOpen(false), [])
-
-  useEffect(() => {
-    closeMenu()
-  }, [pathname, closeMenu])
+  const { mobileTabHrefs, ...sidebarProps } = sidebar
+  const [collapsed, setCollapsed] = useState(false)
+  const [hydrated, setHydrated] = useState(false)
 
   useEffect(() => {
-    document.body.classList.toggle('nav-open', menuOpen)
-    return () => document.body.classList.remove('nav-open')
-  }, [menuOpen])
+    const stored = localStorage.getItem(SIDEBAR_COLLAPSED_KEY)
+    if (stored === '1') setCollapsed(true)
+    setHydrated(true)
+  }, [])
 
-  useEffect(() => {
-    function onKey(e: KeyboardEvent) {
-      if (e.key === 'Escape') closeMenu()
-    }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [closeMenu])
+  const toggleCollapse = useCallback(() => {
+    setCollapsed(prev => {
+      const next = !prev
+      localStorage.setItem(SIDEBAR_COLLAPSED_KEY, next ? '1' : '0')
+      return next
+    })
+  }, [])
+
+  const shellClass = [
+    'app-shell',
+    collapsed && hydrated ? 'sidebar-collapsed' : '',
+  ]
+    .filter(Boolean)
+    .join(' ')
 
   return (
-    <div className="app-shell">
-      <button
-        type="button"
-        className={`sidebar-overlay${menuOpen ? ' is-visible' : ''}`}
-        aria-label="Закрити меню"
-        onClick={closeMenu}
-        tabIndex={menuOpen ? 0 : -1}
-      />
-
+    <div className={shellClass}>
       <Sidebar
-        {...sidebar}
-        mobileOpen={menuOpen}
-        onNavigate={closeMenu}
+        {...sidebarProps}
+        collapsed={collapsed && hydrated}
+        onToggleCollapse={toggleCollapse}
       />
 
       <div className="app-main">
         <header className="mobile-topbar">
-          <button
-            type="button"
-            className={`burger-btn${menuOpen ? ' is-open' : ''}`}
-            aria-label={menuOpen ? 'Закрити меню' : 'Відкрити меню'}
-            aria-expanded={menuOpen}
-            onClick={() => setMenuOpen(v => !v)}
-          >
-            <span />
-            <span />
-            <span />
-          </button>
-          <Link href={homeForRole(sidebar.role)} className="mobile-topbar-logo" aria-label="На головну">
+          <Link href={homeForRole(sidebarProps.role)} className="mobile-topbar-logo" aria-label="На головну">
             <img src="/branding/movna-logo.svg" alt="Movna" width={120} height={28} />
           </Link>
         </header>
 
         <main className="main-content">{children}</main>
       </div>
+
+      {mobileTabHrefs && mobileTabHrefs.length > 0 && (
+        <BottomNav
+          role={sidebarProps.role}
+          userName={sidebarProps.userName}
+          userInitials={sidebarProps.userInitials}
+          accentColor={sidebarProps.accentColor}
+          accentBg={sidebarProps.accentBg}
+          sections={sidebarProps.sections}
+          tabHrefs={mobileTabHrefs}
+        />
+      )}
     </div>
   )
 }

@@ -2,7 +2,8 @@
 
 import { AdminOptimateSyncBar } from '@/components/admin/AdminOptimateSyncBar'
 import { OptimateEntityModal } from '@/components/admin/OptimateEntityModal'
-import { PageHeader, Card, Badge, Empty, Pagination } from '@/components/shared/UI'
+import { StatusBadge } from '@/components/shared/StatusBadge'
+import { PageHeader, Card, Empty, Pagination } from '@/components/shared/UI'
 import {
   TeacherListItem,
   adminOptimateApi,
@@ -10,7 +11,6 @@ import {
 } from '@/lib/admin-optimate-api'
 import { useDebouncedValue } from '@/hooks/useDebouncedValue'
 import { CacheMeta } from '@/lib/optimate-api'
-import { statusBadgeVariant } from '@/lib/optimate-ui'
 import type { TeacherLessonStats } from '@/lib/teacher-optimate-api'
 import { useCallback, useEffect, useState } from 'react'
 
@@ -133,7 +133,7 @@ export default function AdminTeachers() {
               <div style={{ flex: 1, textAlign: 'left' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
                   <span className="admin-table-title">{t.full_name}</span>
-                  <Badge variant={statusBadgeVariant(t.status)}>{t.status_label}</Badge>
+                  <StatusBadge label={t.status_label} status={t.status} />
                 </div>
                 <div className="admin-table-sub">{t.email || t.phone || `ID ${t.id}`}</div>
                 {t.description && (

@@ -2,7 +2,8 @@
 
 import { AdminOptimateSyncBar } from '@/components/admin/AdminOptimateSyncBar'
 import { OptimateEntityModal } from '@/components/admin/OptimateEntityModal'
-import { PageHeader, Badge, Card, Empty, Pagination } from '@/components/shared/UI'
+import { StatusBadge } from '@/components/shared/StatusBadge'
+import { PageHeader, Card, Empty, Pagination } from '@/components/shared/UI'
 import { FilterChipBar } from '@/components/shared/FilterChipBar'
 import {
   StudentListItem,
@@ -10,7 +11,6 @@ import {
   zipStudentTeachers,
 } from '@/lib/admin-optimate-api'
 import { CacheMeta } from '@/lib/optimate-api'
-import { statusBadgeVariant } from '@/lib/optimate-ui'
 import { useDebouncedValue } from '@/hooks/useDebouncedValue'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 
@@ -195,9 +195,9 @@ export default function AdminStudents() {
           value={filter}
           onChange={f => setFilter(f)}
           chips={[
-            { key: 'all', label: 'Всі' },
-            { key: 'active', label: 'Активні' },
-            { key: 'low', label: 'Малий баланс' },
+            { key: 'all', label: 'Всі', emoji: '📋', accent: 'gray' },
+            { key: 'active', label: 'Активні', emoji: '✅', accent: 'teal' },
+            { key: 'low', label: 'Малий баланс', emoji: '⚠️', accent: 'amber' },
           ]}
         />
       </div>
@@ -250,7 +250,7 @@ export default function AdminStudents() {
                 }
               }}
             >
-              <Badge variant="purple">{s.skill_level_label || '—'}</Badge>
+              <StatusBadge label={s.skill_level_label || '—'} variant="purple" emoji="📊" />
             </div>
             <div
               className="admin-table-cell admin-table-cell--clickable"
@@ -264,9 +264,11 @@ export default function AdminStudents() {
                 }
               }}
             >
-              <Badge variant={s.remaining_lessons <= 2 ? 'red' : s.remaining_lessons <= 4 ? 'amber' : 'green'}>
-                {s.remaining_lessons}
-              </Badge>
+              <StatusBadge
+                label={String(s.remaining_lessons)}
+                variant={s.remaining_lessons <= 2 ? 'red' : s.remaining_lessons <= 4 ? 'amber' : 'green'}
+                emoji={s.remaining_lessons <= 2 ? '⚠️' : '💳'}
+              />
             </div>
             <div
               className="admin-table-cell admin-table-cell--clickable"
@@ -294,7 +296,7 @@ export default function AdminStudents() {
                 }
               }}
             >
-              <Badge variant={statusBadgeVariant(s.status)}>{s.status_label}</Badge>
+              <StatusBadge label={s.status_label} status={s.status} />
             </div>
           </div>
         ))}

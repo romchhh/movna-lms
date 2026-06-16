@@ -1,6 +1,7 @@
 import { apiFetch } from './api-fetch'
 import { getToken } from './auth'
 import { notifyHomeworkUpdated } from './homework-events'
+import { homeworkStatusMeta } from './status-ui'
 
 export type HomeworkStatus = 'assigned' | 'viewed' | 'completed' | 'reviewed'
 
@@ -177,10 +178,8 @@ export function studentHomeworkCta(status: HomeworkStatus): string {
 }
 
 export function homeworkStatusVariant(status: HomeworkStatus): 'red' | 'amber' | 'green' | 'gray' | 'teal' {
-  if (status === 'assigned') return 'red'
-  if (status === 'viewed') return 'amber'
-  if (status === 'completed') return 'teal'
-  return 'green'
+  const variant = homeworkStatusMeta(status).variant
+  return variant === 'purple' ? 'teal' : variant
 }
 
 export function isHomeworkOverdue(deadlineAt?: string | null, status?: HomeworkStatus): boolean {

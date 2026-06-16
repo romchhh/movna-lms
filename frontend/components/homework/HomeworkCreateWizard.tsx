@@ -1,6 +1,7 @@
 'use client'
 
 import { HomeworkAssignModal } from '@/components/homework/HomeworkAssignModal'
+import { StatusBadge } from '@/components/shared/StatusBadge'
 import { Badge, Empty } from '@/components/shared/UI'
 import { CloseIcon, IconButton } from '@/components/shared/Icons'
 import { useDebouncedValue } from '@/hooks/useDebouncedValue'
@@ -9,10 +10,10 @@ import { formatEventDateFull, formatTimeRange } from '@/lib/calendar-utils'
 import {
   HOMEWORK_STATUS_LABELS,
   homeworkApi,
-  homeworkStatusVariant,
   type HomeworkAssignment,
   type HomeworkSubmission,
 } from '@/lib/homework-api'
+import { homeworkStatusMeta } from '@/lib/status-ui'
 import { optimateEventToCalendarEvent } from '@/lib/optimate-api'
 import { studentInitials } from '@/lib/optimate-ui'
 import { teacherOptimateApi, type TeacherStudent } from '@/lib/teacher-optimate-api'
@@ -233,11 +234,12 @@ export function HomeworkCreateWizard({ onClose, onSaved }: HomeworkCreateWizardP
                         {!hasHw ? (
                           <Badge variant="gray">Без ДЗ</Badge>
                         ) : submission ? (
-                          <Badge variant={homeworkStatusVariant(submission.status)}>
-                            {HOMEWORK_STATUS_LABELS[submission.status]}
-                          </Badge>
+                          <StatusBadge
+                            label={HOMEWORK_STATUS_LABELS[submission.status]}
+                            meta={homeworkStatusMeta(submission.status)}
+                          />
                         ) : (
-                          <Badge variant="amber">ДЗ · додати учня</Badge>
+                          <StatusBadge label="ДЗ · додати учня" variant="amber" emoji="📝" />
                         )}
                       </span>
                     </button>

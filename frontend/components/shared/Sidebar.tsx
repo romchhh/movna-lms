@@ -1,6 +1,7 @@
 'use client'
 
 import { clearSession, homeForRole } from '@/lib/auth'
+import { isNavActive } from '@/lib/nav-utils'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 
@@ -19,14 +20,9 @@ export interface SidebarProps {
   accentBg: string
   sections: { label: string; items: NavItem[] }[]
   mobileOpen?: boolean
+  collapsed?: boolean
+  onToggleCollapse?: () => void
   onNavigate?: () => void
-}
-
-function isActive(pathname: string, href: string) {
-  if (href === '/student' || href === '/teacher' || href === '/admin') {
-    return pathname === href
-  }
-  return pathname === href || pathname.startsWith(`${href}/`)
 }
 
 export default function Sidebar({
@@ -37,6 +33,8 @@ export default function Sidebar({
   accentBg,
   sections,
   mobileOpen = false,
+  collapsed = false,
+  onToggleCollapse,
   onNavigate,
 }: SidebarProps) {
   const pathname = usePathname()
@@ -53,7 +51,7 @@ export default function Sidebar({
 
   return (
     <aside
-      className={`sidebar${mobileOpen ? ' sidebar-open' : ''}`}
+      className={`sidebar${mobileOpen ? ' sidebar-open' : ''}${collapsed ? ' sidebar--collapsed' : ''}`}
       style={
         {
           '--accent': accentColor,
@@ -62,15 +60,42 @@ export default function Sidebar({
       }
     >
       <div className="sidebar-header">
-        <Link href={homeHref} className="sidebar-logo" onClick={onNavigate} aria-label="На головну">
-          <img
-            src="/branding/movna-logo.svg"
-            alt="Movna"
-            className="brand-logo"
-            width={157}
-            height={36}
-          />
-        </Link>
+        <div className="sidebar-header-brand">
+          <Link
+            href={homeHref}
+            className="sidebar-logo"
+            onClick={onNavigate}
+            aria-label="На головну"
+            title={collapsed ? 'Movna' : undefined}
+          >
+            <img
+              src="/branding/movna-logo.svg"
+              alt="Movna"
+              className="brand-logo"
+              width={157}
+              height={36}
+            />
+            <span className="sidebar-logo-mark" aria-hidden>M</span>
+          </Link>
+          {onToggleCollapse && (
+            <button
+              type="button"
+              className="sidebar-collapse-btn"
+              onClick={onToggleCollapse}
+              aria-label={collapsed ? 'Розгорнути меню' : 'Згорнути меню'}
+              aria-expanded={!collapsed}
+              title={collapsed ? 'Розгорнути' : 'Згорнути'}
+            >
+              <svg viewBox="0 0 24 24" aria-hidden>
+                {collapsed ? (
+                  <polyline points="9 18 15 12 9 6" />
+                ) : (
+                  <polyline points="15 18 9 12 15 6" />
+                )}
+              </svg>
+            </button>
+          )}
+        </div>
         <button
           type="button"
           className="sidebar-close"
@@ -89,17 +114,23 @@ export default function Sidebar({
           <div key={section.label} className="sidebar-group">
             <div className="sidebar-section">{section.label}</div>
             {section.items.map(item => {
-              const active = isActive(pathname, item.href)
+              const active = isNavActive(pathname, item.href)
               return (
                 <Link
                   key={item.href}
                   href={item.href}
                   className={`nav-item${active ? ' active' : ''}`}
                   onClick={onNavigate}
+                  title={collapsed ? item.label : undefined}
                 >
-                  <span className="nav-icon">{item.icon}</span>
+                  <span className="nav-icon">
+                    {item.icon}
+                    {collapsed && (item.badge ?? 0) > 0 && (
+                      <span className="nav-icon-dot" aria-hidden />
+                    )}
+                  </span>
                   <span className="nav-label">{item.label}</span>
-                  {(item.badge ?? 0) > 0 && (
+                  {!collapsed && (item.badge ?? 0) > 0 && (
                     <span className="nav-badge">{item.badge}</span>
                   )}
                 </Link>

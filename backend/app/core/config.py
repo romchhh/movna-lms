@@ -59,6 +59,8 @@ class Settings(BaseSettings):
 
     # Google Sheets
     GOOGLE_SHEETS_CREDENTIALS_JSON: str = ""
+    GOOGLE_SHEETS_CREDENTIALS_PATH: str = ""
+    GOOGLE_SHEETS_SPREADSHEET_ID: str = "1PG1qn3J3xDwtALK57aQ7dR_c-9OOOoGgsYhY286_R1o"
     SHEETS_SYNC_INTERVAL_MINUTES: int = 15
 
     # File storage (local for dev, S3/R2 for prod)

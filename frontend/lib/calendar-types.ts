@@ -117,16 +117,7 @@ const PRODUCT_COLORS: Record<number, string> = {
   4: 'var(--pd)',
 }
 
-const STATUS_EMOJI: Record<string, string> = {
-  'Проведено': '✅',
-  'Скасовано': '❌',
-  'Заплановано': '📅',
-}
-
-export function eventStatusEmoji(statusLabel?: string): string {
-  if (!statusLabel) return STATUS_EMOJI['Заплановано']
-  return STATUS_EMOJI[statusLabel] ?? '📅'
-}
+export { eventStatusEmoji } from './status-ui'
 
 function completionVariant(label?: string): CalendarStatusVariant {
   if (!label) return 'gray'

@@ -17,7 +17,7 @@ import {
 } from '@/lib/homework-api'
 import { assignmentToCalendarEvent } from '@/lib/homework-utils'
 import { useSearchParams } from 'next/navigation'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { Suspense, useCallback, useEffect, useMemo, useState } from 'react'
 
 type Filter = 'all' | 'to_review' | 'reviewed'
 
@@ -27,7 +27,19 @@ const FILTER_LABELS: Record<Filter, string> = {
   reviewed: 'Готово',
 }
 
-export default function TeacherHomework() {
+const FILTER_EMOJI: Record<Filter, string> = {
+  all: '📋',
+  to_review: '👀',
+  reviewed: '✅',
+}
+
+const FILTER_ACCENT: Record<Filter, 'gray' | 'amber' | 'green'> = {
+  all: 'gray',
+  to_review: 'amber',
+  reviewed: 'green',
+}
+
+function TeacherHomeworkContent() {
   const searchParams = useSearchParams()
   const filterParam = searchParams.get('filter') as Filter | null
 
@@ -112,6 +124,8 @@ export default function TeacherHomework() {
             chips={(['to_review', 'all', 'reviewed'] as const).map(key => ({
               key,
               label: FILTER_LABELS[key],
+              emoji: FILTER_EMOJI[key],
+              accent: FILTER_ACCENT[key],
               count: key === 'all' ? counts.all : key === 'to_review' ? counts.to_review : counts.reviewed,
             }))}
           />
@@ -182,5 +196,13 @@ export default function TeacherHomework() {
         />
       )}
     </>
+  )
+}
+
+export default function TeacherHomework() {
+  return (
+    <Suspense fallback={<Empty label="Завантаження..." />}>
+      <TeacherHomeworkContent />
+    </Suspense>
   )
 }

@@ -2,18 +2,19 @@
 
 import { HomeworkFileLink } from '@/components/homework/HomeworkFileLink'
 import { MarkdownView } from '@/components/homework/MarkdownView'
+import { StatusBadge } from '@/components/shared/StatusBadge'
 import { Badge } from '@/components/shared/UI'
 import { CloseIcon, EditIcon, IconButton } from '@/components/shared/Icons'
 import { useHomeworkModal } from '@/hooks/useHomeworkModal'
 import {
   HOMEWORK_STATUS_LABELS,
   formatHomeworkDeadline,
-  homeworkStatusVariant,
   isHomeworkOverdue,
   type HomeworkAssignment,
   type HomeworkSubmission,
 } from '@/lib/homework-api'
 import { formatEventDateFull, formatTimeRange } from '@/lib/calendar-utils'
+import { homeworkStatusMeta } from '@/lib/status-ui'
 
 interface HomeworkTeacherDetailModalProps {
   assignment: HomeworkAssignment
@@ -61,7 +62,7 @@ export function HomeworkTeacherDetailModal({
               <span>
                 Дедлайн: {formatHomeworkDeadline(assignment.deadline_at)}
                 {hasPending && isHomeworkOverdue(assignment.deadline_at, 'assigned') && (
-                  <Badge variant="red">Прострочено</Badge>
+                  <StatusBadge label="Прострочено" variant="red" emoji="⚠️" />
                 )}
               </span>
             )}
@@ -88,9 +89,10 @@ export function HomeworkTeacherDetailModal({
                 Учень: {submission.student_name}
               </h3>
               <div style={{ marginBottom: 10 }}>
-                <Badge variant={homeworkStatusVariant(submission.status)}>
-                  {HOMEWORK_STATUS_LABELS[submission.status]}
-                </Badge>
+                <StatusBadge
+                  label={HOMEWORK_STATUS_LABELS[submission.status]}
+                  meta={homeworkStatusMeta(submission.status)}
+                />
               </div>
 
               {submission.student_answer_md ? (
@@ -124,9 +126,10 @@ export function HomeworkTeacherDetailModal({
                 <div key={sub.id} className="hw-teacher-sub-row">
                   <div>
                     <div className="admin-table-title">{sub.student_name}</div>
-                    <Badge variant={homeworkStatusVariant(sub.status)}>
-                      {HOMEWORK_STATUS_LABELS[sub.status]}
-                    </Badge>
+                    <StatusBadge
+                      label={HOMEWORK_STATUS_LABELS[sub.status]}
+                      meta={homeworkStatusMeta(sub.status)}
+                    />
                   </div>
                 </div>
               ))}

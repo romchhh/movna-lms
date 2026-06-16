@@ -54,6 +54,12 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
         accentBg: 'var(--pl)',
         sections,
         homeworkHref: '/student/homework',
+        mobileTabHrefs: [
+          '/student',
+          '/student/course',
+          '/student/homework',
+          '/student/schedule',
+        ],
       }}
     >
       {children}

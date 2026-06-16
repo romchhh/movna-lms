@@ -1,12 +1,12 @@
 'use client'
 
-import { Badge } from '@/components/shared/UI'
+import { StatusBadge } from '@/components/shared/StatusBadge'
 import {
   formatHomeworkDeadline,
   HOMEWORK_STATUS_LABELS,
-  homeworkStatusVariant,
   isHomeworkOverdue,
 } from '@/lib/homework-api'
+import { homeworkStatusMeta } from '@/lib/status-ui'
 import type { CalendarEvent } from '@/lib/calendar-types'
 import { useStudentHomework } from '@/hooks/useStudentHomework'
 
@@ -24,9 +24,10 @@ export function StudentEventHomeworkSection({ event, onOpen }: StudentEventHomew
       <div className="hw-event-section-head">
         <h3>Домашнє завдання</h3>
         {hw && (
-          <Badge variant={homeworkStatusVariant(hw.status)}>
-            {HOMEWORK_STATUS_LABELS[hw.status]}
-          </Badge>
+          <StatusBadge
+            label={HOMEWORK_STATUS_LABELS[hw.status]}
+            meta={homeworkStatusMeta(hw.status)}
+          />
         )}
       </div>
       {loading && <p className="hw-event-muted">Завантаження…</p>}
@@ -34,27 +35,15 @@ export function StudentEventHomeworkSection({ event, onOpen }: StudentEventHomew
         <p className="hw-event-muted">Для цього уроку домашнього завдання немає</p>
       )}
       {!loading && hw && (
-        <>
-          <p className="hw-event-muted">
-            {hw.title}
-            {hw.deadline_at && ` · до ${formatHomeworkDeadline(hw.deadline_at)}`}
-            {isHomeworkOverdue(hw.deadline_at, hw.status) && (
-              <span className="hw-overdue"> · прострочено</span>
-            )}
-          </p>
-          {hw.teacher_review_note && hw.status === 'reviewed' && (
-            <p className="hw-event-preview">Є коментар від викладача</p>
+        <button type="button" className="hw-event-link" onClick={() => onOpen(hw.submission_id)}>
+          <span className="hw-event-link-title">{hw.title}</span>
+          {hw.deadline_at && (
+            <span className="hw-event-link-meta">
+              {isHomeworkOverdue(hw.deadline_at, hw.status) ? '⚠️ ' : ''}
+              До {formatHomeworkDeadline(hw.deadline_at)}
+            </span>
           )}
-          <button
-            type="button"
-            className="btn btn-sm btn-teal"
-            onClick={() => onOpen(hw.submission_id)}
-          >
-            {hw.status === 'assigned' || hw.status === 'viewed'
-              ? 'Виконати ДЗ'
-              : 'Переглянути ДЗ'}
-          </button>
-        </>
+        </button>
       )}
     </div>
   )

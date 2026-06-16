@@ -6,11 +6,13 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
 from app.core.database import init_db
 from app.routers import (
+    admin_curriculum,
     admin_optimate,
     auth,
     event_homework,
     lesson_requests,
     student_optimate,
+    teacher_curriculum,
     teacher_optimate,
 )
 
@@ -39,6 +41,8 @@ app.include_router(auth.router, prefix="/api/auth", tags=["auth"])
 app.include_router(student_optimate.router, prefix="/api/student/optimate", tags=["student-optimate"])
 app.include_router(teacher_optimate.router, prefix="/api/teacher/optimate", tags=["teacher-optimate"])
 app.include_router(admin_optimate.router, prefix="/api/admin/optimate", tags=["admin-optimate"])
+app.include_router(admin_curriculum.router, prefix="/api/admin/curricula", tags=["admin-curricula"])
+app.include_router(teacher_curriculum.router, prefix="/api/teacher/curricula", tags=["teacher-curricula"])
 app.include_router(lesson_requests.router, prefix="/api/lesson-requests", tags=["lesson-requests"])
 app.include_router(event_homework.router, prefix="/api/homework", tags=["homework"])
 

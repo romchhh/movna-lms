@@ -1,6 +1,7 @@
 'use client'
 
 import { OptimateEntityModal } from '@/components/admin/OptimateEntityModal'
+import { StatusBadge } from '@/components/shared/StatusBadge'
 import { Badge } from '@/components/shared/UI'
 import { IconButton, ChevronLeftIcon, ChevronRightIcon } from '@/components/shared/Icons'
 import { CalendarFormatLegend } from '@/components/calendar/CalendarFormatLegend'
@@ -121,7 +122,6 @@ function EventCard({
     >
       <div className="cal-event-card-top">
         <span className="cal-event-card-title">
-          <StatusEmoji label={event.status_label} />
           <EventFormatBadge scheduleClass={event.schedule_class} compact />
           {event.title}
         </span>
@@ -130,7 +130,10 @@ function EventCard({
             <span className="cal-event-format-label">{event.schedule_class_label}</span>
           )}
           {event.status_label && (
-            <Badge variant={statusBadge(event.status_variant)}>{event.status_label}</Badge>
+            <StatusBadge
+              label={event.status_label}
+              variant={statusBadge(event.status_variant)}
+            />
           )}
         </span>
       </div>

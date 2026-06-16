@@ -1,5 +1,6 @@
 'use client'
 
+import { StatusBadge } from '@/components/shared/StatusBadge'
 import { Badge } from '@/components/shared/UI'
 import { CloseIcon, IconButton } from '@/components/shared/Icons'
 import type { CalendarEvent, CalendarParticipant } from '@/lib/calendar-types'
@@ -222,10 +223,13 @@ export function EventDetailModal({
           <div className="cal-modal-header-text">
             <div className="cal-modal-badges">
               {event.status_label && (
-                <Badge variant={statusBadge(event.status_variant)}>{event.status_label}</Badge>
+                <StatusBadge
+                  label={event.status_label}
+                  variant={statusBadge(event.status_variant)}
+                />
               )}
-              {event.is_trial && <Badge variant="amber">Пробний</Badge>}
-              {active && <Badge variant="teal">Зараз</Badge>}
+              {event.is_trial && <StatusBadge label="Пробний" variant="amber" emoji="🎯" />}
+              {active && <StatusBadge label="Зараз" variant="teal" emoji="▶️" />}
             </div>
             <h2 id="cal-modal-title">{event.title}</h2>
             {event.product_type_label && event.product_type_label !== event.title && (

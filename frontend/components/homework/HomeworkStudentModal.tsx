@@ -3,6 +3,7 @@
 import { HomeworkFileLink } from '@/components/homework/HomeworkFileLink'
 import { MarkdownView } from '@/components/homework/MarkdownView'
 import { SimpleAnswerField } from '@/components/homework/SimpleAnswerField'
+import { StatusBadge } from '@/components/shared/StatusBadge'
 import { Badge } from '@/components/shared/UI'
 import { CloseIcon, IconButton } from '@/components/shared/Icons'
 import { useHomeworkModal } from '@/hooks/useHomeworkModal'
@@ -10,10 +11,10 @@ import {
   formatHomeworkDeadline,
   HOMEWORK_STUDENT_STATUS_LABELS,
   homeworkApi,
-  homeworkStatusVariant,
   isHomeworkOverdue,
   type HomeworkStudentItem,
 } from '@/lib/homework-api'
+import { homeworkStatusMeta } from '@/lib/status-ui'
 import { filenameFromHomeworkUrl } from '@/lib/homework-file-utils'
 import { useEffect, useState } from 'react'
 
@@ -131,9 +132,10 @@ export function HomeworkStudentModal({ submissionId, initial, onClose, onUpdated
 
         {item && canEdit && isTodo && (
           <div className="hw-modal-action-banner">
-            <Badge variant={homeworkStatusVariant(item.status)}>
-              {HOMEWORK_STUDENT_STATUS_LABELS[item.status]}
-            </Badge>
+            <StatusBadge
+              label={HOMEWORK_STUDENT_STATUS_LABELS[item.status]}
+              meta={homeworkStatusMeta(item.status)}
+            />
             <span>Напишіть відповідь або прикріпіть файл і натисніть «Надіслати»</span>
           </div>
         )}

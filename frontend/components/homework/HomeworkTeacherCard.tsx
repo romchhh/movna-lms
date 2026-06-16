@@ -1,16 +1,12 @@
 'use client'
 
 import { HomeworkSubmissionProgress } from '@/components/homework/HomeworkSubmissionProgress'
+import { StatusBadge } from '@/components/shared/StatusBadge'
 import { Badge } from '@/components/shared/UI'
 import { EditIcon, IconButton } from '@/components/shared/Icons'
 import type { HomeworkAssignment, HomeworkSubmission } from '@/lib/homework-api'
-import {
-  assignmentCardStatus,
-  assignmentLessonWhen,
-  displayAssignmentTitle,
-  displayStudentName,
-  teacherStudentStatusLabel,
-} from '@/lib/homework-utils'
+import { assignmentCardStatus, assignmentLessonWhen, displayAssignmentTitle, displayStudentName, teacherStudentStatusLabel } from '@/lib/homework-utils'
+import { statusMetaByLabel } from '@/lib/status-ui'
 import { useState } from 'react'
 
 interface HomeworkTeacherCardProps {
@@ -51,7 +47,7 @@ function StudentRow({
       <div className="hw-teacher-action-row hw-teacher-action-row--done">
         <div className="hw-teacher-action-main">
           <span className="hw-row-title">{name}</span>
-          <Badge variant="green">{status}</Badge>
+          <Badge variant="green">{statusMetaByLabel(status).emoji} {status}</Badge>
         </div>
         <button type="button" className="btn btn-sm btn-secondary" onClick={onView}>
           Відкрити
@@ -96,7 +92,7 @@ export function HomeworkTeacherCard({
           <h3 className="hw-row-title">{title}</h3>
           <p className="hw-card-meta">{assignmentLessonWhen(assignment)}</p>
         </div>
-        <Badge variant={cardStatus.variant}>{cardStatus.label}</Badge>
+        <StatusBadge label={cardStatus.label} meta={statusMetaByLabel(cardStatus.label)} variant={cardStatus.variant} />
       </button>
 
       <HomeworkSubmissionProgress assignment={assignment} />

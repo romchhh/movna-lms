@@ -1,9 +1,9 @@
 'use client'
 
+import { StatusBadge } from '@/components/shared/StatusBadge'
 import { Badge } from '@/components/shared/UI'
 import { CacheMeta, formatCacheAge } from '@/lib/optimate-api'
 import { ProductSummary, stripHtml, zipStudentTeachers } from '@/lib/admin-optimate-api'
-import { statusBadgeVariant } from '@/lib/optimate-ui'
 import { PortalLoginPasswordPanel } from '@/components/admin/PortalLoginPasswordPanel'
 import { OptimateNotesList } from '@/components/admin/OptimateNotesList'
 import { TeacherLessonStatsPanel } from '@/components/teacher/TeacherLessonStatsPanel'
@@ -168,9 +168,10 @@ export function OptimateEntityModal({
                 <div className="optimate-detail-grid">
                   <KeyValue label="ID" value={String(data.id ?? '')} />
                   <KeyValue label="Статус" value={
-                    <Badge variant={statusBadgeVariant(Number(data.status ?? 0))}>
-                      {String(data.status_label ?? '')}
-                    </Badge>
+                    <StatusBadge
+                      label={String(data.status_label ?? '')}
+                      status={Number(data.status ?? 0)}
+                    />
                   } />
                   {kind === 'student' && (
                     <>

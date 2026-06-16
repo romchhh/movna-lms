@@ -10,12 +10,13 @@ interface RoleLayoutShellProps {
     sections: SidebarProps['sections']
     requestsHref?: string
     homeworkHref?: string
+    mobileTabHrefs?: string[]
   }
 }
 
 export function RoleLayoutShell({ children, sidebar }: RoleLayoutShellProps) {
   const { homeworkCount, requestsCount: pendingCount } = useLmsNotifications(sidebar.role)
-  const { requestsHref, homeworkHref, sections, ...rest } = sidebar
+  const { requestsHref, homeworkHref, sections, mobileTabHrefs, ...rest } = sidebar
 
   const sectionsWithBadge = sections.map(section => ({
     ...section,
@@ -31,7 +32,7 @@ export function RoleLayoutShell({ children, sidebar }: RoleLayoutShellProps) {
   }))
 
   return (
-    <AppShell sidebar={{ ...rest, sections: sectionsWithBadge }}>
+    <AppShell sidebar={{ ...rest, sections: sectionsWithBadge, mobileTabHrefs }}>
       {children}
     </AppShell>
   )

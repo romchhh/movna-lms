@@ -2,27 +2,40 @@
 
 import { HomeworkStudentModal } from '@/components/homework/HomeworkStudentModal'
 import { FilterChipBar } from '@/components/shared/FilterChipBar'
-import { Badge, Empty, PageHeader } from '@/components/shared/UI'
+import { StatusBadge } from '@/components/shared/StatusBadge'
+import { Empty, PageHeader } from '@/components/shared/UI'
 import { useStudentHomework } from '@/hooks/useStudentHomework'
 import { formatEventDateFull } from '@/lib/calendar-utils'
 import {
   filterStudentHomework,
   formatHomeworkDeadline,
   HOMEWORK_STUDENT_STATUS_LABELS,
-  homeworkStatusVariant,
   isHomeworkOverdue,
   sortStudentHomework,
   studentHomeworkCounts,
   studentHomeworkCta,
   type StudentHomeworkFilter,
 } from '@/lib/homework-api'
+import { homeworkStatusMeta } from '@/lib/status-ui'
 import { useSearchParams } from 'next/navigation'
-import { useEffect, useMemo, useState } from 'react'
+import { Suspense, useEffect, useMemo, useState } from 'react'
 
 const FILTER_LABELS: Record<StudentHomeworkFilter, string> = {
   active: 'Зробити',
   pending: 'Відправлені',
   done: 'Перевірені',
+}
+
+const FILTER_EMOJI: Record<StudentHomeworkFilter, string> = {
+  active: '📝',
+  pending: '📤',
+  done: '✅',
+}
+
+const FILTER_ACCENT: Record<StudentHomeworkFilter, 'red' | 'teal' | 'green'> = {
+  active: 'red',
+  pending: 'teal',
+  done: 'green',
 }
 
 const EMPTY_LABELS: Record<StudentHomeworkFilter, string> = {
@@ -31,7 +44,7 @@ const EMPTY_LABELS: Record<StudentHomeworkFilter, string> = {
   done: 'Перевірених завдань ще немає',
 }
 
-export default function StudentHomework() {
+function StudentHomeworkContent() {
   const searchParams = useSearchParams()
   const tabParam = searchParams.get('tab') as StudentHomeworkFilter | null
   const openParam = searchParams.get('id')
@@ -81,6 +94,8 @@ export default function StudentHomework() {
             chips={(['active', 'pending', 'done'] as const).map(key => ({
               key,
               label: FILTER_LABELS[key],
+              emoji: FILTER_EMOJI[key],
+              accent: FILTER_ACCENT[key],
               count: counts[key],
             }))}
           />
@@ -108,11 +123,12 @@ export default function StudentHomework() {
                 <div className="hw-student-card-text">
                   <div className="hw-student-row-top">
                     <h3 className="hw-row-title">{item.title}</h3>
-                    <Badge variant={homeworkStatusVariant(item.status)}>
-                      {HOMEWORK_STUDENT_STATUS_LABELS[item.status]}
-                    </Badge>
+                    <StatusBadge
+                      label={HOMEWORK_STUDENT_STATUS_LABELS[item.status]}
+                      meta={homeworkStatusMeta(item.status)}
+                    />
                     {isHomeworkOverdue(item.deadline_at, item.status) && (
-                      <Badge variant="red">Прострочено</Badge>
+                      <StatusBadge label="Прострочено" variant="red" emoji="⚠️" />
                     )}
                   </div>
                   {item.event_title && (
@@ -146,5 +162,13 @@ export default function StudentHomework() {
         onUpdated={reload}
       />
     </>
+  )
+}
+
+export default function StudentHomework() {
+  return (
+    <Suspense fallback={<Empty label="Завантаження..." />}>
+      <StudentHomeworkContent />
+    </Suspense>
   )
 }

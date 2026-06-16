@@ -19,10 +19,15 @@ node_modules/
 .next/
 out/
 
+# Secrets
+credentials.json
+*.pem
+
 # Env
 .env
 .env.local
 *.env
+
 
 # OS
 .DS_Store

@@ -2,9 +2,10 @@
 
 import { TeacherStudentDetailModal } from '@/components/teacher/TeacherStudentDetailModal'
 import { FilterChipBar } from '@/components/shared/FilterChipBar'
-import { Badge, Card, Empty, PageHeader, Pagination } from '@/components/shared/UI'
+import { StatusBadge } from '@/components/shared/StatusBadge'
+import { Card, Empty, PageHeader, Pagination } from '@/components/shared/UI'
 import { useDebouncedValue } from '@/hooks/useDebouncedValue'
-import { statusBadgeVariant, studentInitials } from '@/lib/optimate-ui'
+import { studentInitials } from '@/lib/optimate-ui'
 import { TeacherStudent, teacherOptimateApi } from '@/lib/teacher-optimate-api'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 
@@ -12,13 +13,13 @@ const PAGE_SIZE = 50
 
 type StatusFilter = 'all' | '1' | '2' | '3' | '4' | '5'
 
-const STATUS_FILTERS: { key: StatusFilter; label: string }[] = [
-  { key: 'all', label: 'Всі' },
-  { key: '1', label: 'Активні' },
-  { key: '3', label: 'Нові' },
-  { key: '4', label: 'На паузі' },
-  { key: '5', label: 'Очікування' },
-  { key: '2', label: 'Архів' },
+const STATUS_FILTERS: { key: StatusFilter; label: string; emoji: string; accent: 'gray' | 'teal' | 'purple' | 'amber' | 'red' }[] = [
+  { key: 'all', label: 'Всі', emoji: '📋', accent: 'gray' },
+  { key: '1', label: 'Активні', emoji: '✅', accent: 'teal' },
+  { key: '3', label: 'Нові', emoji: '✨', accent: 'purple' },
+  { key: '4', label: 'На паузі', emoji: '⏸️', accent: 'amber' },
+  { key: '5', label: 'Очікування', emoji: '⏳', accent: 'amber' },
+  { key: '2', label: 'Архів', emoji: '📦', accent: 'gray' },
 ]
 
 export default function TeacherStudentsPage() {
@@ -104,6 +105,8 @@ export default function TeacherStudentsPage() {
           chips={STATUS_FILTERS.map(f => ({
             key: f.key,
             label: f.label,
+            emoji: f.emoji,
+            accent: f.accent,
             count: loading
               ? undefined
               : f.key === 'all'
@@ -144,10 +147,11 @@ export default function TeacherStudentsPage() {
               </div>
             </div>
             <div>
-              <Badge variant="purple">{student.skill_level_label || '—'}</Badge>
+              <StatusBadge label={student.skill_level_label || '—'} variant="purple" emoji="📊" />
             </div>
             <div>
-              <Badge
+              <StatusBadge
+                label={String(student.remaining_lessons)}
                 variant={
                   student.remaining_lessons <= 2
                     ? 'red'
@@ -155,9 +159,8 @@ export default function TeacherStudentsPage() {
                       ? 'amber'
                       : 'green'
                 }
-              >
-                {student.remaining_lessons}
-              </Badge>
+                emoji={student.remaining_lessons <= 2 ? '⚠️' : '💳'}
+              />
             </div>
             <div className="admin-table-sub teacher-students-products">
               {student.product_names.length
@@ -165,7 +168,7 @@ export default function TeacherStudentsPage() {
                 : '—'}
             </div>
             <div>
-              <Badge variant={statusBadgeVariant(student.status)}>{student.status_label}</Badge>
+              <StatusBadge label={student.status_label} status={student.status} />
             </div>
           </button>
         ))}

@@ -1,16 +1,12 @@
 'use client'
 
 import { TeacherStudentDetailModal } from '@/components/teacher/TeacherStudentDetailModal'
-import { Badge, Card, Empty, PageHeader } from '@/components/shared/UI'
-import { statusBadgeVariant, studentInitials } from '@/lib/optimate-ui'
+import { StatusBadge } from '@/components/shared/StatusBadge'
+import { Card, Empty, PageHeader } from '@/components/shared/UI'
+import { groupStatusMeta } from '@/lib/status-ui'
+import { studentInitials } from '@/lib/optimate-ui'
 import { TeacherGroup, teacherOptimateApi } from '@/lib/teacher-optimate-api'
 import { useCallback, useEffect, useMemo, useState } from 'react'
-
-function groupStatusBadgeVariant(status: number): 'teal' | 'gray' | 'amber' {
-  if (status === 1) return 'teal'
-  if (status === 2) return 'gray'
-  return 'amber'
-}
 
 export default function TeacherGroups() {
   const [groups, setGroups] = useState<TeacherGroup[]>([])
@@ -76,7 +72,7 @@ export default function TeacherGroups() {
               {group.level_label && (
                 <span className="badge badge-purple">{group.level_label}</span>
               )}
-              <Badge variant={groupStatusBadgeVariant(group.status)}>{group.status_label}</Badge>
+              <StatusBadge label={group.status_label} meta={groupStatusMeta(group.status)} />
               <span style={{ fontSize: 11, color: 'var(--tx2)' }}>{group.schedule_label}</span>
               {group.chat_url && (
                 <a
@@ -93,7 +89,7 @@ export default function TeacherGroups() {
         >
           <div className="teacher-group-students-head">
             <span>Учень</span>
-            <span style={{ textAlign: 'center' }}>Статус</span>
+            <span>Статус</span>
             <span>Контакт</span>
           </div>
 
@@ -111,9 +107,9 @@ export default function TeacherGroups() {
                   <div className="admin-teacher-avatar">{studentInitials(student.full_name)}</div>
                   <div className="admin-table-title">{student.full_name}</div>
                 </div>
-                <div style={{ textAlign: 'center' }}>
-                  <Badge variant={statusBadgeVariant(student.status)}>{student.status_label}</Badge>
-                </div>
+            <div style={{ textAlign: 'inherit' }}>
+              <StatusBadge label={student.status_label} status={student.status} />
+            </div>
                 <span style={{ fontSize: 12, color: 'var(--tx2)', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                   {student.email || student.phone || '—'}
                 </span>
