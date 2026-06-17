@@ -74,6 +74,8 @@ export default function TeacherSchedulePage() {
           showParticipants
           showFormatLegend
           enableHomework
+          enableCurriculumTopic
+          curriculumAudience="teacher"
         />
       </Card>
     </>

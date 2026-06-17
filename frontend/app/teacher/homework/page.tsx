@@ -6,6 +6,7 @@ import { HomeworkPendingAlert } from '@/components/homework/HomeworkPendingAlert
 import { HomeworkReviewModal } from '@/components/homework/HomeworkReviewModal'
 import { HomeworkTeacherCard } from '@/components/homework/HomeworkTeacherCard'
 import { HomeworkTeacherDetailModal } from '@/components/homework/HomeworkTeacherDetailModal'
+import { AddButtonLabel } from '@/components/shared/AddButtonLabel'
 import { FilterChipBar } from '@/components/shared/FilterChipBar'
 import { Empty, PageHeader } from '@/components/shared/UI'
 import {
@@ -106,7 +107,7 @@ function TeacherHomeworkContent() {
     <>
       <PageHeader title="Домашні завдання" sub="Перевірка та призначення">
         <button type="button" className="btn btn-teal" onClick={() => setCreateOpen(true)}>
-          + Додати ДЗ
+          <AddButtonLabel>Додати ДЗ</AddButtonLabel>
         </button>
       </PageHeader>
 
@@ -138,7 +139,7 @@ function TeacherHomeworkContent() {
           <Empty label={emptyLabel} />
           {filter !== 'to_review' && (
             <button type="button" className="btn btn-teal btn-sm" onClick={() => setCreateOpen(true)}>
-              Додати ДЗ
+              <AddButtonLabel>Додати ДЗ</AddButtonLabel>
             </button>
           )}
         </div>

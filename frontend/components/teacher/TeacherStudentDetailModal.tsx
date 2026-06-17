@@ -1,6 +1,7 @@
 'use client'
 
 import { OptimateEntityModal } from '@/components/admin/OptimateEntityModal'
+import { TeacherStudentCurriculumPanel } from '@/components/curriculum/TeacherStudentCurriculumPanel'
 import { teacherOptimateApi } from '@/lib/teacher-optimate-api'
 import type { CacheMeta } from '@/lib/optimate-api'
 import { useCallback, useEffect, useState } from 'react'
@@ -51,6 +52,8 @@ export function TeacherStudentDetailModal({
   const modalTitle = title
     || (detail?.full_name != null ? String(detail.full_name) : 'Учень')
 
+  const studentName = detail?.full_name != null ? String(detail.full_name) : modalTitle
+
   return (
     <OptimateEntityModal
       open={!!studentId}
@@ -65,6 +68,14 @@ export function TeacherStudentDetailModal({
       kind="student"
       audience="teacher"
       overlayClassName={overlayClassName}
+      extraSections={
+        studentId ? (
+          <TeacherStudentCurriculumPanel
+            studentOptimateId={studentId}
+            studentName={studentName}
+          />
+        ) : null
+      }
     />
   )
 }

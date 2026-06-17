@@ -38,9 +38,20 @@ export function TeacherStatsKpi({
       className={`tls-kpi ${variantClass[variant]}${highlight ? ' tls-kpi--highlight' : ''}${compact ? ' tls-kpi--compact' : ''}`}
     >
       <div className="tls-kpi-top">
-        {icon && <div className="tls-kpi-icon" aria-hidden>{icon}</div>}
+        {!compact && (icon || (trend && !loading && trend.pct !== 0)) ? (
+          <div className="tls-kpi-top-row">
+            {icon && <div className="tls-kpi-icon" aria-hidden>{icon}</div>}
+            {trend && !loading && trend.pct !== 0 && (
+              <span className={`tls-trend ${trend.pct > 0 ? 'tls-trend--up' : 'tls-trend--down'}`}>
+                {trend.pct > 0 ? '↑' : '↓'} {Math.abs(trend.pct)}%
+              </span>
+            )}
+          </div>
+        ) : (
+          icon && <div className="tls-kpi-icon" aria-hidden>{icon}</div>
+        )}
         <div className="tls-kpi-label">{label}</div>
-        {trend && !loading && trend.pct !== 0 && (
+        {compact && trend && !loading && trend.pct !== 0 && (
           <span className={`tls-trend ${trend.pct > 0 ? 'tls-trend--up' : 'tls-trend--down'}`}>
             {trend.pct > 0 ? '↑' : '↓'} {Math.abs(trend.pct)}%
           </span>

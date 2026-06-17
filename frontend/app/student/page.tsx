@@ -1,6 +1,7 @@
 'use client'
 
 import { EventsCalendar } from '@/components/calendar/EventsCalendar'
+import { StudentCurriculumSummary } from '@/components/curriculum/StudentCurriculumSummary'
 import { HomeworkAlert } from '@/components/homework/HomeworkAlert'
 import { HomeworkStudentModal } from '@/components/homework/HomeworkStudentModal'
 import { Badge, PageHeader, ProgressBar, StatCard } from '@/components/shared/UI'
@@ -82,7 +83,7 @@ export default function StudentDashboard() {
         />
       </div>
 
-      <div className="g2">
+      <div className="g2 dash-grid">
         <div className="card">
           <div className="card-title">Баланси з Optimate</div>
           {!loading && (!overview || overview.balances.length === 0) && (
@@ -123,6 +124,8 @@ export default function StudentDashboard() {
             embed
             enableLessonRequests
             enableStudentHomework
+            enableCurriculumTopic
+            curriculumAudience="student"
             onOpenHomework={id => setHwModalId(id)}
           />
           <Link
@@ -135,6 +138,11 @@ export default function StudentDashboard() {
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <div className="card">
+            <div className="card-title">Моя навчальна програма</div>
+            <StudentCurriculumSummary compact showLink />
+          </div>
+
           <div className="card">
             <div className="card-title">Наступне заняття</div>
             {!nextEvent && !loading && (

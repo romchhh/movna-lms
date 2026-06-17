@@ -1,5 +1,6 @@
 'use client'
 
+import { HomeworkNavIcon } from '@/components/shared/NavIcons'
 import { homeworkApi } from '@/lib/homework-api'
 import { HOMEWORK_UPDATED_EVENT } from '@/lib/homework-events'
 import Link from 'next/link'
@@ -36,7 +37,8 @@ export function HomeworkPendingAlert({ onReview }: HomeworkPendingAlertProps) {
   return (
     <div className="hw-alert hw-alert--teacher">
       <div className="hw-alert-body">
-        <strong>
+        <strong className="hw-alert-title">
+          <HomeworkNavIcon />
           {count} відповід{count === 1 ? 'ь' : 'і'} на перевірці
         </strong>
         <p>Учні надіслали домашні завдання — перегляньте та залиште коментар</p>

@@ -38,11 +38,12 @@ export default function AdminDashboard() {
       <PageHeader
         title="Адмін-панель"
         sub={loading ? 'Завантаження з Optimate...' : `Огляд школи · ${overview?.month_label ?? ''}`}
-      />
+      >
+        <AdminOptimateSyncBar cache={overview?.cache ?? null} onRefreshed={load} />
+      </PageHeader>
 
       {error && <div className="alert">{error}</div>}
       <PendingRequestsAlert href="/admin/requests" />
-      <AdminOptimateSyncBar cache={overview?.cache ?? null} onRefreshed={load} />
 
       <AdminDashboardInsights overview={overview} loading={loading} />
 

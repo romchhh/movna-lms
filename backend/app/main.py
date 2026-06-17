@@ -11,9 +11,11 @@ from app.routers import (
     auth,
     event_homework,
     lesson_requests,
+    student_curriculum,
     student_optimate,
     teacher_curriculum,
     teacher_optimate,
+    teacher_student_curriculum,
 )
 
 
@@ -43,6 +45,8 @@ app.include_router(teacher_optimate.router, prefix="/api/teacher/optimate", tags
 app.include_router(admin_optimate.router, prefix="/api/admin/optimate", tags=["admin-optimate"])
 app.include_router(admin_curriculum.router, prefix="/api/admin/curricula", tags=["admin-curricula"])
 app.include_router(teacher_curriculum.router, prefix="/api/teacher/curricula", tags=["teacher-curricula"])
+app.include_router(teacher_student_curriculum.router, prefix="/api/teacher/student-curricula", tags=["teacher-student-curricula"])
+app.include_router(student_curriculum.router, prefix="/api/student/curriculum", tags=["student-curriculum"])
 app.include_router(lesson_requests.router, prefix="/api/lesson-requests", tags=["lesson-requests"])
 app.include_router(event_homework.router, prefix="/api/homework", tags=["homework"])
 

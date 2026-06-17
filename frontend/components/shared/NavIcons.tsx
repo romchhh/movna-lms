@@ -76,34 +76,6 @@ export function RequestsNavIcon() {
   )
 }
 
-export function CourseNavIcon() {
-  return (
-    <NavSvg>
-      <path d="M4 19.5A2.5 2.5 0 016.5 17H20" />
-      <path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z" />
-    </NavSvg>
-  )
-}
-
-export function StatsNavIcon() {
-  return (
-    <NavSvg>
-      <line x1="18" y1="20" x2="18" y2="10" />
-      <line x1="12" y1="20" x2="12" y2="4" />
-      <line x1="6" y1="20" x2="6" y2="14" />
-    </NavSvg>
-  )
-}
-
-export function VocabNavIcon() {
-  return (
-    <NavSvg>
-      <path d="M12 20h9" />
-      <path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z" />
-    </NavSvg>
-  )
-}
-
 export function BalanceNavIcon() {
   return (
     <NavSvg>
@@ -111,20 +83,6 @@ export function BalanceNavIcon() {
       <path d="M16 7V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v2" />
     </NavSvg>
   )
-}
-
-export function SupportNavIcon() {
-  return (
-    <NavSvg>
-      <circle cx="12" cy="12" r="10" />
-      <path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3" />
-      <line x1="12" y1="17" x2="12.01" y2="17" />
-    </NavSvg>
-  )
-}
-
-export function GradesNavIcon() {
-  return <StatsNavIcon />
 }
 
 export function MaterialsNavIcon() {
@@ -153,4 +111,29 @@ export function MoreNavIcon() {
       <circle cx="12" cy="19" r="1.5" fill="currentColor" stroke="none" />
     </NavSvg>
   )
+}
+
+export function LogoutNavIcon() {
+  return (
+    <NavSvg>
+      <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4" />
+      <polyline points="16 17 21 12 16 7" />
+      <line x1="21" y1="12" x2="9" y2="12" />
+    </NavSvg>
+  )
+}
+
+export function CurriculaNavIcon() {
+  return (
+    <NavSvg>
+      <path d="M4 19.5A2.5 2.5 0 016.5 17H20" />
+      <path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z" />
+      <line x1="8" y1="7" x2="16" y2="7" />
+      <line x1="8" y1="11" x2="14" y2="11" />
+    </NavSvg>
+  )
+}
+
+export function ManageNavIcon() {
+  return <StudentsNavIcon />
 }

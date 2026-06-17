@@ -1,15 +1,13 @@
 import { RoleLayoutShell } from '@/components/shared/RoleLayoutShell'
 import {
   CalendarNavIcon,
+  CurriculaNavIcon,
   DashNavIcon,
-  GradesNavIcon,
   GroupsNavIcon,
   HomeworkNavIcon,
-  MaterialsNavIcon,
   RequestsNavIcon,
   SettingsNavIcon,
   StudentsNavIcon,
-  CourseNavIcon,
 } from '@/components/shared/NavIcons'
 
 const sections = [
@@ -27,9 +25,7 @@ const sections = [
   {
     label: 'Матеріали',
     items: [
-      { href: '/teacher/curricula', label: 'Навчальні програми', icon: <CourseNavIcon /> },
-      { href: '/teacher/grades', label: 'Журнал оцінок', icon: <GradesNavIcon /> },
-      { href: '/teacher/materials', label: 'Матеріали', icon: <MaterialsNavIcon /> },
+      { href: '/teacher/curricula', label: 'Навчальні програми', icon: <CurriculaNavIcon /> },
     ],
   },
   {

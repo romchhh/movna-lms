@@ -3,7 +3,7 @@
 import { HomeworkFileLink } from '@/components/homework/HomeworkFileLink'
 import { MarkdownView } from '@/components/homework/MarkdownView'
 import { SimpleAnswerField } from '@/components/homework/SimpleAnswerField'
-import { CloseIcon, IconButton } from '@/components/shared/Icons'
+import { AppModalHeader } from '@/components/shared/AppModalHeader'
 import { useHomeworkModal } from '@/hooks/useHomeworkModal'
 import { homeworkApi, type HomeworkSubmission } from '@/lib/homework-api'
 import { useState } from 'react'
@@ -45,10 +45,11 @@ export function HomeworkReviewModal({ submission, onClose, onReviewed }: Homewor
         aria-labelledby="hw-review-title"
         onClick={e => e.stopPropagation()}
       >
-        <div className="hw-modal-header">
-          <h2 id="hw-review-title">{submission.student_name}</h2>
-          <IconButton label="Закрити" onClick={onClose}><CloseIcon /></IconButton>
-        </div>
+        <AppModalHeader
+          title={submission.student_name}
+          titleId="hw-review-title"
+          onClose={onClose}
+        />
         <div className="hw-modal-body">
           {error && <div className="alert">{error}</div>}
           {!hasAnswer && (

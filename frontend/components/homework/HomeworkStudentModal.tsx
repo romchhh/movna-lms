@@ -5,7 +5,7 @@ import { MarkdownView } from '@/components/homework/MarkdownView'
 import { SimpleAnswerField } from '@/components/homework/SimpleAnswerField'
 import { StatusBadge } from '@/components/shared/StatusBadge'
 import { Badge } from '@/components/shared/UI'
-import { CloseIcon, IconButton } from '@/components/shared/Icons'
+import { AppModalHeader } from '@/components/shared/AppModalHeader'
 import { useHomeworkModal } from '@/hooks/useHomeworkModal'
 import {
   formatHomeworkDeadline,
@@ -114,21 +114,22 @@ export function HomeworkStudentModal({ submissionId, initial, onClose, onUpdated
         aria-labelledby="hw-student-title"
         onClick={e => e.stopPropagation()}
       >
-        <div className="hw-modal-header">
-          <div>
-            <h2 id="hw-student-title">{item?.title ?? 'Домашнє завдання'}</h2>
-            {item && (
-              <p className="hw-modal-sub hw-modal-sub--inline">
+        <AppModalHeader
+          title={item?.title ?? 'Домашнє завдання'}
+          titleId="hw-student-title"
+          subtitle={
+            item ? (
+              <span className="hw-modal-sub--inline">
                 {item.event_title && `${item.event_title} · `}
                 до {formatHomeworkDeadline(item.deadline_at)}
                 {isHomeworkOverdue(item.deadline_at, item.status) && (
                   <span className="hw-overdue"> · прострочено</span>
                 )}
-              </p>
-            )}
-          </div>
-          <IconButton label="Закрити" onClick={onClose}><CloseIcon /></IconButton>
-        </div>
+              </span>
+            ) : undefined
+          }
+          onClose={onClose}
+        />
 
         {item && canEdit && isTodo && (
           <div className="hw-modal-action-banner">

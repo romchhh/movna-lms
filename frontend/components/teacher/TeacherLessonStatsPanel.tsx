@@ -9,7 +9,7 @@ import {
 } from '@/components/teacher/TeacherStatsKpi'
 import { FormatBreakdownBar } from '@/components/shared/FormatBreakdownBar'
 import { WeekActivityChart } from '@/components/shared/WeekActivityChart'
-import { Card, Empty } from '@/components/shared/UI'
+import { Empty } from '@/components/shared/UI'
 import type { TeacherLessonStats } from '@/lib/teacher-optimate-api'
 
 interface TeacherLessonStatsPanelProps {
@@ -40,7 +40,7 @@ export function TeacherLessonStatsPanel({ stats, loading, compact }: TeacherLess
         <TeacherStatsKpi
           variant="teal"
           icon={<StatsCalendarIcon />}
-          label={`Проведено · ${monthLabel}`}
+          label="Проведено"
           value={loading ? '…' : fmt(stats?.completed_this_month ?? 0)}
           sub={loading ? '' : `${stats?.hours_this_month ?? 0} год навчання`}
           compact={compact}
@@ -78,7 +78,7 @@ export function TeacherLessonStatsPanel({ stats, loading, compact }: TeacherLess
       {!compact && (
         <>
           <section className="tls-bento">
-            <div className="tls-panel tls-panel--chart card">
+            <div className="tls-panel tls-panel--chart">
               <h3 className="tls-panel-title">Тижнева активність</h3>
               {loading && <Empty label="Завантаження..." />}
               {!loading && stats && stats.week_activity.length > 0 && (
@@ -94,8 +94,8 @@ export function TeacherLessonStatsPanel({ stats, loading, compact }: TeacherLess
               )}
             </div>
 
-            <div className="tls-panel tls-panel--formats card">
-              <h3 className="tls-panel-title">Формати · {monthLabel}</h3>
+            <div className="tls-panel tls-panel--formats">
+              <h3 className="tls-panel-title">Формати</h3>
               {loading && <Empty label="Завантаження..." />}
               {!loading && stats && (
                 <FormatBreakdownBar
@@ -195,8 +195,14 @@ export function TeacherLessonStatsPanel({ stats, loading, compact }: TeacherLess
   }
 
   return (
-    <Card title={`Статистика уроків · ${monthLabel}`} className="tls-card-wrap">
+    <div className="card tls-card-wrap">
+      <div className="tls-card-head">
+        <h2 className="tls-card-title">Статистика уроків</h2>
+        {!loading && monthLabel !== '…' && (
+          <span className="tls-card-month">{monthLabel}</span>
+        )}
+      </div>
       {body}
-    </Card>
+    </div>
   )
 }

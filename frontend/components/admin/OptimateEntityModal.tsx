@@ -7,8 +7,8 @@ import { ProductSummary, stripHtml, zipStudentTeachers } from '@/lib/admin-optim
 import { PortalLoginPasswordPanel } from '@/components/admin/PortalLoginPasswordPanel'
 import { OptimateNotesList } from '@/components/admin/OptimateNotesList'
 import { TeacherLessonStatsPanel } from '@/components/teacher/TeacherLessonStatsPanel'
+import { AppModalHeader } from '@/components/shared/AppModalHeader'
 import type { TeacherLessonStats } from '@/lib/teacher-optimate-api'
-import { CloseIcon, IconButton, RefreshIcon } from '@/components/shared/Icons'
 import { useEffect } from 'react'
 
 interface OptimateEntityModalProps {
@@ -27,6 +27,7 @@ interface OptimateEntityModalProps {
   onTeacherClick?: (teacherId: string, teacherName: string) => void
   lessonStats?: TeacherLessonStats | null
   lessonStatsLoading?: boolean
+  extraSections?: React.ReactNode
 }
 
 function DetailSection({ title, children }: { title: string; children: React.ReactNode }) {
@@ -107,6 +108,7 @@ export function OptimateEntityModal({
   audience = 'admin',
   lessonStats,
   lessonStatsLoading,
+  extraSections,
 }: OptimateEntityModalProps) {
   useEffect(() => {
     if (!open) return
@@ -135,28 +137,17 @@ export function OptimateEntityModal({
   return (
     <div className={`optimate-modal-overlay${overlayClassName ? ` ${overlayClassName}` : ''}`} onClick={onClose}>
       <div className="optimate-modal" onClick={e => e.stopPropagation()}>
-        <div className="optimate-modal-header">
-          <div>
-            <h2>{title}</h2>
-            {audience === 'admin' && cache && (
-              <p className="optimate-modal-meta">
-                Optimate · {formatCacheAge(cache.synced_at)}{cache.cached ? ' · кеш' : ' · свіжі дані'}
-              </p>
-            )}
-          </div>
-          <div className="optimate-modal-actions">
-            <IconButton
-              label="Оновити"
-              onClick={onRefresh}
-              loading={loading}
-            >
-              <RefreshIcon />
-            </IconButton>
-            <IconButton label="Закрити" onClick={onClose}>
-              <CloseIcon />
-            </IconButton>
-          </div>
-        </div>
+        <AppModalHeader
+          title={title}
+          meta={
+            audience === 'admin' && cache
+              ? `Optimate · ${formatCacheAge(cache.synced_at)}${cache.cached ? ' · кеш' : ' · свіжі дані'}`
+              : undefined
+          }
+          onClose={onClose}
+          onRefresh={onRefresh}
+          refreshLoading={loading}
+        />
 
         <div className="optimate-modal-body">
           {loading && !data && <p>Завантаження деталей...</p>}
@@ -262,6 +253,8 @@ export function OptimateEntityModal({
                   <OptimateNotesList notes={notes} />
                 </DetailSection>
               )}
+
+              {extraSections}
 
             </>
           )}

@@ -31,7 +31,7 @@ export function FilterChipBar<T extends string>({
   showCounts = false,
 }: FilterChipBarProps<T>) {
   return (
-    <>
+    <div className="filter-chip-scroll">
       {chips.map(chip => {
         const isActive = value === chip.key
         const chipAccent = chip.accent ?? accent
@@ -41,7 +41,7 @@ export function FilterChipBar<T extends string>({
             key={chip.key}
             type="button"
             onClick={() => onChange(chip.key)}
-            className="btn btn-sm"
+            className="btn btn-sm filter-chip-btn"
             style={{
               background: isActive ? styles.activeBg : 'var(--bg2)',
               color: isActive ? styles.activeColor : 'var(--tx2)',
@@ -57,7 +57,7 @@ export function FilterChipBar<T extends string>({
           </button>
         )
       })}
-    </>
+    </div>
   )
 }
 

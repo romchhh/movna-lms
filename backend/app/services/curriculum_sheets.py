@@ -258,3 +258,16 @@ async def get_curriculum_programs(*, force_refresh: bool = False) -> tuple[Curri
     data.cached_at = cached_at
     data.from_cache = from_cache
     return data, cached_at, from_cache
+
+
+async def get_curriculum_program_by_slug(
+    slug: str,
+    *,
+    force_refresh: bool = False,
+) -> CurriculumProgramOut | None:
+    data, _, _ = await get_curriculum_programs(force_refresh=force_refresh)
+    needle = slug.strip().lower()
+    for program in data.programs:
+        if program.slug.lower() == needle:
+            return program
+    return None

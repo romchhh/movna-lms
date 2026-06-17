@@ -1,6 +1,6 @@
 'use client'
 
-import { CloseIcon, IconButton } from '@/components/shared/Icons'
+import { AppModalHeader } from '@/components/shared/AppModalHeader'
 import { useEffect } from 'react'
 
 interface ConfirmDialogProps {
@@ -51,26 +51,23 @@ export function ConfirmDialog({
         role="dialog"
         aria-modal="true"
       >
-        <div className="confirm-dialog-head">
-          <h3>{title}</h3>
-          <IconButton label="Закрити" onClick={onCancel}>
-            <CloseIcon />
-          </IconButton>
-        </div>
-        <p className="confirm-dialog-message">{message}</p>
-        {children}
-        <div className="confirm-dialog-actions">
-          <button type="button" className="btn btn-secondary btn-sm" onClick={onCancel} disabled={loading}>
-            {cancelLabel}
-          </button>
-          <button
-            type="button"
-            className={`btn btn-sm ${danger ? 'btn-danger' : 'btn-primary'}`}
-            onClick={onConfirm}
-            disabled={loading}
-          >
-            {loading ? '...' : confirmLabel}
-          </button>
+        <AppModalHeader title={title} onClose={onCancel} compact />
+        <div className="confirm-dialog-body">
+          <p className="confirm-dialog-message">{message}</p>
+          {children}
+          <div className="confirm-dialog-actions">
+            <button type="button" className="btn btn-secondary btn-sm" onClick={onCancel} disabled={loading}>
+              {cancelLabel}
+            </button>
+            <button
+              type="button"
+              className={`btn btn-sm ${danger ? 'btn-danger' : 'btn-primary'}`}
+              onClick={onConfirm}
+              disabled={loading}
+            >
+              {loading ? '...' : confirmLabel}
+            </button>
+          </div>
         </div>
       </div>
     </div>

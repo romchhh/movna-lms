@@ -2,7 +2,8 @@
 
 import { HomeworkFileLink } from '@/components/homework/HomeworkFileLink'
 import { MarkdownEditor } from '@/components/homework/MarkdownEditor'
-import { CloseIcon, IconButton } from '@/components/shared/Icons'
+import { AppModalHeader } from '@/components/shared/AppModalHeader'
+import { AddButtonLabel } from '@/components/shared/AddButtonLabel'
 import type { CalendarEvent } from '@/lib/calendar-types'
 import {
   homeworkApi,
@@ -127,12 +128,12 @@ export function HomeworkAssignModal({
   return (
     <div className="hw-modal-overlay" onClick={onClose}>
       <div className="hw-modal hw-modal--wide" onClick={e => e.stopPropagation()}>
-        <div className="hw-modal-header">
-          <h2>{existing ? 'Редагувати ДЗ' : 'Додати ДЗ'}</h2>
-          <IconButton label="Закрити" onClick={onClose}><CloseIcon /></IconButton>
-        </div>
+        <AppModalHeader
+          title={existing ? 'Редагувати ДЗ' : 'Додати ДЗ'}
+          subtitle={`${event.title} · ${students.map(s => s.name).join(', ')}`}
+          onClose={onClose}
+        />
         <div className="hw-modal-body">
-          <p className="hw-modal-sub">{event.title} · {students.map(s => s.name).join(', ')}</p>
           {error && <div className="alert">{error}</div>}
 
           <label className="hw-field">
@@ -162,7 +163,7 @@ export function HomeworkAssignModal({
                 </div>
               ))}
               <label className="btn btn-sm btn-secondary hw-upload-btn">
-                {uploading ? 'Завантаження…' : '+ Додати файл'}
+                {uploading ? 'Завантаження…' : <AddButtonLabel>Додати файл</AddButtonLabel>}
                 <input type="file" hidden onChange={onFilePick} disabled={uploading} />
               </label>
             </div>

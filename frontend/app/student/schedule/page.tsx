@@ -56,6 +56,8 @@ export default function StudentSchedule() {
           defaultView="week"
           enableLessonRequests
           enableStudentHomework
+          enableCurriculumTopic
+          curriculumAudience="student"
           onOpenHomework={id => setHwModalId(id)}
         />
       </Card>

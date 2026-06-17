@@ -1,6 +1,6 @@
 # MOVNA LMS
 
-Портал школи MOVNA: кабінети учня, викладача та адміна. Дані розкладу, балансів і профілів — з **Optimate CRM**; локальна БД — користувачі порталу та запити на перенесення/скасування уроків.
+Портал школи MOVNA: кабінети учня, викладача та адміна. Дані розкладу, балансів і профілів — з **Optimate CRM**; локальна БД — користувачі порталу, домашні завдання, навчальні програми викладачів та запити на перенесення/скасування уроків.
 
 ## Стек
 
@@ -11,6 +11,7 @@
 | БД | SQLite (dev) / PostgreSQL (prod) |
 | Auth | JWT (access + refresh, «Запамʼятати мене») |
 | CRM | Optimate API (кеш на бекенді) |
+| Програми Movna | Google Sheets (кеш на бекенді) |
 
 ## Швидкий старт
 
@@ -61,24 +62,14 @@ npm run dev
 movna-lms/
 ├── backend/app/
 │   ├── core/              # config, database, security
-│   ├── models/            # User, LessonRequest (+ legacy ORM tables)
-│   ├── routers/
-│   │   ├── auth.py
-│   │   ├── student_optimate.py
-│   │   ├── teacher_optimate.py
-│   │   ├── admin_optimate.py
-│   │   └── lesson_requests.py
-│   ├── schemas/           # Pydantic (optimate, auth, lesson_request)
-│   └── services/          # Optimate client, cache, password vault
+│   ├── models/            # User, LessonRequest, EventHomework, TeacherCurriculum
+│   ├── routers/           # auth, optimate, curricula, homework, lesson_requests
+│   ├── schemas/
+│   └── services/          # Optimate, Google Sheets, file storage
 ├── frontend/
 │   ├── app/               # student/, teacher/, admin/, auth/
-│   ├── components/        # calendar, lesson-requests, shared UI
+│   ├── components/
 │   └── lib/
-│       ├── auth.ts
-│       ├── optimate-api.ts
-│       ├── teacher-optimate-api.ts
-│       ├── admin-optimate-api.ts
-│       └── lesson-requests-api.ts
 └── docker-compose.yml
 ```
 
@@ -90,6 +81,9 @@ movna-lms/
 | `/api/student/optimate/*` | Баланси, події, транзакції, профіль учня |
 | `/api/teacher/optimate/*` | Учні, групи, розклад, події викладача |
 | `/api/admin/optimate/*` | KPI, користувачі CRM, календар усіх уроків |
+| `/api/admin/curricula` | Програми Movna з Google Sheets |
+| `/api/teacher/curricula` | Програми Movna + власні програми викладача |
+| `/api/homework/*` | Домашні завдання до уроків Optimate |
 | `/api/lesson-requests/*` | Запити скасування / перенесення уроків |
 | `/api/health` | Health check |
 
@@ -101,6 +95,9 @@ movna-lms/
 - `OPTIMATE_VERIFY_ON_LOGIN=true` — логін лише для email з Optimate  
 - `OPTIMATE_VERIFY_ON_LOGIN=false` — локальні seed-акаунти  
 
-## UI-заглушки
+## Google Sheets (програми Movna)
 
-У навігації залишені сторінки без бекенду (курси, домашні завдання, словник тощо) — для майбутнього функціоналу LMS.
+У `backend/.env`:
+
+- `GOOGLE_SHEETS_SPREADSHEET_ID`
+- `GOOGLE_SHEETS_CREDENTIALS_JSON` або `GOOGLE_SHEETS_CREDENTIALS_PATH`

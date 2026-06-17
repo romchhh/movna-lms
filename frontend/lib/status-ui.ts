@@ -79,10 +79,6 @@ export function optimateStatusMeta(status: number): StatusMeta {
   return OPTIMATE_STATUS[status] ?? { emoji: '•', variant: 'gray' }
 }
 
-export function statusBadgeVariant(status: number): StatusBadgeVariant {
-  return optimateStatusMeta(status).variant
-}
-
 export function groupStatusMeta(status: number): StatusMeta {
   if (status === 1) return { emoji: '✅', variant: 'teal' }
   if (status === 2) return { emoji: '⏸️', variant: 'amber' }
@@ -105,10 +101,6 @@ export function homeworkStatusMeta(status: HomeworkStatus): StatusMeta {
   if (status === 'viewed') return { emoji: '👀', variant: 'amber' }
   if (status === 'completed') return { emoji: '📤', variant: 'teal' }
   return { emoji: '✅', variant: 'green' }
-}
-
-export function homeworkStatusVariant(status: HomeworkStatus): StatusBadgeVariant {
-  return homeworkStatusMeta(status).variant
 }
 
 export function lessonRequestStatusMeta(status: LessonRequestStatus): StatusMeta {

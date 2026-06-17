@@ -148,14 +148,6 @@ export async function downloadHomeworkFile(url: string, filename: string) {
   URL.revokeObjectURL(objectUrl)
 }
 
-/** @deprecated Prefer downloadHomeworkFile or inline preview */
-export async function openHomeworkFile(url: string) {
-  const blob = await fetchHomeworkFileBlob(url)
-  const objectUrl = URL.createObjectURL(blob)
-  window.open(objectUrl, '_blank', 'noopener,noreferrer')
-  setTimeout(() => URL.revokeObjectURL(objectUrl), 60_000)
-}
-
 export const HOMEWORK_STATUS_LABELS: Record<HomeworkStatus, string> = {
   assigned: 'Нове',
   viewed: 'Переглянуто',
@@ -175,11 +167,6 @@ export function studentHomeworkCta(status: HomeworkStatus): string {
   if (status === 'assigned' || status === 'viewed') return 'Здати'
   if (status === 'completed') return 'Переглянути'
   return 'Відкрити'
-}
-
-export function homeworkStatusVariant(status: HomeworkStatus): 'red' | 'amber' | 'green' | 'gray' | 'teal' {
-  const variant = homeworkStatusMeta(status).variant
-  return variant === 'purple' ? 'teal' : variant
 }
 
 export function isHomeworkOverdue(deadlineAt?: string | null, status?: HomeworkStatus): boolean {

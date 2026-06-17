@@ -2,7 +2,7 @@
 
 import { StatusBadge } from '@/components/shared/StatusBadge'
 import { Badge } from '@/components/shared/UI'
-import { CloseIcon, IconButton } from '@/components/shared/Icons'
+import { AppModalHeader } from '@/components/shared/AppModalHeader'
 import type { CalendarEvent, CalendarParticipant } from '@/lib/calendar-types'
 import {
   formatDurationMinutes,
@@ -11,6 +11,7 @@ import {
 } from '@/lib/calendar-utils'
 import { EventHomeworkSection } from '@/components/homework/EventHomeworkSection'
 import { StudentEventHomeworkSection } from '@/components/homework/StudentEventHomeworkSection'
+import { EventCurriculumTopicSection } from '@/components/curriculum/EventCurriculumTopicSection'
 import { ConfirmDialog } from '@/components/lesson-requests/ConfirmDialog'
 import { lessonRequestsApi } from '@/lib/lesson-requests-api'
 import { isEventActive } from '@/lib/optimate-api'
@@ -80,6 +81,9 @@ export function EventDetailModal({
   enableLessonRequests = false,
   enableHomework = false,
   enableStudentHomework = false,
+  enableCurriculumTopic = false,
+  curriculumAudience = 'student' as 'teacher' | 'student',
+  curriculumStudentId,
   onOpenHomework,
   onRequestCreated,
 }: {
@@ -90,6 +94,9 @@ export function EventDetailModal({
   enableLessonRequests?: boolean
   enableHomework?: boolean
   enableStudentHomework?: boolean
+  enableCurriculumTopic?: boolean
+  curriculumAudience?: 'teacher' | 'student'
+  curriculumStudentId?: string
   onOpenHomework?: (submissionId: number) => void
   onRequestCreated?: () => void
 }) {
@@ -219,8 +226,15 @@ export function EventDetailModal({
           className="cal-modal-accent"
           style={{ background: event.accent_color ?? 'var(--p)' }}
         />
-        <div className="cal-modal-header">
-          <div className="cal-modal-header-text">
+        <AppModalHeader
+          titleId="cal-modal-title"
+          title={event.title}
+          subtitle={
+            event.product_type_label && event.product_type_label !== event.title
+              ? event.product_type_label
+              : undefined
+          }
+          badges={
             <div className="cal-modal-badges">
               {event.status_label && (
                 <StatusBadge
@@ -231,15 +245,9 @@ export function EventDetailModal({
               {event.is_trial && <StatusBadge label="Пробний" variant="amber" emoji="🎯" />}
               {active && <StatusBadge label="Зараз" variant="teal" emoji="▶️" />}
             </div>
-            <h2 id="cal-modal-title">{event.title}</h2>
-            {event.product_type_label && event.product_type_label !== event.title && (
-              <p className="cal-modal-subtitle">{event.product_type_label}</p>
-            )}
-          </div>
-          <IconButton label="Закрити" onClick={onClose} className="cal-modal-close">
-            <CloseIcon />
-          </IconButton>
-        </div>
+          }
+          onClose={onClose}
+        />
 
         <div className="cal-modal-body">
           <div className="cal-modal-hero">
@@ -271,6 +279,14 @@ export function EventDetailModal({
 
           {requestError && <div className="alert" style={{ marginTop: 12 }}>{requestError}</div>}
           {requestSuccess && <div className="student-login-success" style={{ marginTop: 12 }}>{requestSuccess}</div>}
+
+          {enableCurriculumTopic && (
+            <EventCurriculumTopicSection
+              eventId={event.id}
+              audience={curriculumAudience}
+              studentOptimateId={curriculumStudentId ?? students[0]?.id}
+            />
+          )}
 
           {enableHomework && (students.length > 0 || (event.student_names?.length ?? 0) > 0) && (
             <EventHomeworkSection event={event} />

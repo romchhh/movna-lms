@@ -3,15 +3,31 @@
 import { CacheMeta, formatCacheAge } from '@/lib/optimate-api'
 import { adminOptimateApi } from '@/lib/admin-optimate-api'
 import { IconButton, RefreshIcon } from '@/components/shared/Icons'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { createPortal } from 'react-dom'
 
 interface AdminOptimateSyncBarProps {
   cache: CacheMeta | null
   onRefreshed?: () => void
+  /** header — у PageHeader (десктоп); inline — у блоці фільтрів календаря */
+  placement?: 'header' | 'inline'
 }
 
-export function AdminOptimateSyncBar({ cache, onRefreshed }: AdminOptimateSyncBarProps) {
+function refreshTitle(cache: CacheMeta) {
+  return `Оновити Optimate · ${formatCacheAge(cache.synced_at)}${cache.cached ? ' · кеш' : ''}`
+}
+
+export function AdminOptimateSyncBar({
+  cache,
+  onRefreshed,
+  placement = 'header',
+}: AdminOptimateSyncBarProps) {
   const [refreshing, setRefreshing] = useState(false)
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
   async function handleRefresh() {
     setRefreshing(true)
@@ -25,19 +41,32 @@ export function AdminOptimateSyncBar({ cache, onRefreshed }: AdminOptimateSyncBa
 
   if (!cache) return null
 
-  return (
-    <div className="optimate-sync-bar">
-      <span>
-        Optimate: оновлено {formatCacheAge(cache.synced_at)}
-        {cache.cached ? ' · з кешу' : ' · свіжі дані'}
-      </span>
+  const title = refreshTitle(cache)
+
+  function renderButton(extraClass = '') {
+    return (
       <IconButton
-        label="Оновити дані Optimate"
+        className={`optimate-refresh-btn${extraClass ? ` ${extraClass}` : ''}`}
+        label={title}
+        title={title}
         onClick={handleRefresh}
         loading={refreshing}
+        variant="ghost"
+        size="sm"
       >
         <RefreshIcon />
       </IconButton>
-    </div>
+    )
+  }
+
+  const topbarSlot = mounted ? document.getElementById('mobile-topbar-actions') : null
+
+  return (
+    <>
+      {topbarSlot ? createPortal(renderButton('optimate-refresh-btn--topbar'), topbarSlot) : null}
+      <span className={`optimate-refresh-desktop optimate-refresh-desktop--${placement}`}>
+        {renderButton()}
+      </span>
+    </>
   )
 }

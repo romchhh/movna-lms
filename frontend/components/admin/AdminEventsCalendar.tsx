@@ -2,6 +2,7 @@
 
 import { AdminOptimateSyncBar } from '@/components/admin/AdminOptimateSyncBar'
 import { EventsCalendar } from '@/components/calendar/EventsCalendar'
+import { FilterChipBar } from '@/components/shared/FilterChipBar'
 import { Card } from '@/components/shared/UI'
 import { AdminEvent, adminEventToCalendarEvent, adminOptimateApi } from '@/lib/admin-optimate-api'
 import type { CacheMeta } from '@/lib/optimate-api'
@@ -9,6 +10,19 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 
 type RangeFilter = 'today' | 'fortnight' | 'month'
 type StatusFilter = 'all' | 'planned' | 'completed' | 'cancelled'
+
+const RANGE_CHIPS: { key: RangeFilter; label: string; emoji: string }[] = [
+  { key: 'today', label: 'Сьогодні', emoji: '📅' },
+  { key: 'fortnight', label: '2 тижні', emoji: '📆' },
+  { key: 'month', label: 'Місяць', emoji: '🗓️' },
+]
+
+const STATUS_CHIPS: { key: StatusFilter; label: string; emoji: string; accent: 'gray' | 'purple' | 'green' | 'red' }[] = [
+  { key: 'all', label: 'Всі', emoji: '📋', accent: 'gray' },
+  { key: 'planned', label: 'Заплановані', emoji: '📅', accent: 'purple' },
+  { key: 'completed', label: 'Проведені', emoji: '✅', accent: 'green' },
+  { key: 'cancelled', label: 'Скасовані', emoji: '❌', accent: 'red' },
+]
 
 const RANGE_PARAMS: Record<RangeFilter, { back: number; forward: number; label: string }> = {
   today: { back: 0, forward: 1, label: 'Сьогодні' },
@@ -112,71 +126,75 @@ export function AdminEventsCalendar({
   const calendarEvents = useMemo(() => events.map(adminEventToCalendarEvent), [events])
 
   const filters = (
-    <div className="admin-filters admin-cal-filters">
-      {showRangeFilters && (Object.keys(RANGE_PARAMS) as RangeFilter[]).map(f => (
-        <button
-          key={f}
-          type="button"
-          onClick={() => setRange(f)}
-          className="btn btn-sm"
-          style={{
-            background: range === f ? 'var(--rl)' : 'var(--bg2)',
-            color: range === f ? 'var(--rd)' : 'var(--tx2)',
-            border: `.5px solid ${range === f ? 'var(--rd)' : 'var(--bd2)'}`,
-          }}
-        >
-          {RANGE_PARAMS[f].label}
-        </button>
-      ))}
+    <div className="admin-cal-filters">
+      {showSyncBar && (
+        <AdminOptimateSyncBar
+          cache={cache}
+          onRefreshed={() => load(true)}
+          placement="inline"
+        />
+      )}
+      {showRangeFilters && (
+        <div className="admin-cal-filter-row admin-cal-filter-row--range">
+          <span className="admin-cal-filter-label">Період</span>
+          <div className="admin-cal-filter-chips">
+            <FilterChipBar
+              value={range}
+              onChange={setRange}
+              accent="red"
+              chips={RANGE_CHIPS}
+            />
+          </div>
+        </div>
+      )}
 
-      {showStatusFilters && (['all', 'planned', 'completed', 'cancelled'] as const).map(f => (
-        <button
-          key={f}
-          type="button"
-          onClick={() => setStatus(f)}
-          className="btn btn-sm"
-          style={{
-            background: status === f ? 'var(--pl)' : 'var(--bg2)',
-            color: status === f ? 'var(--pd)' : 'var(--tx2)',
-            border: `.5px solid ${status === f ? 'var(--pm)' : 'var(--bd2)'}`,
-          }}
-        >
-          {{ all: 'Всі', planned: 'Заплановані', completed: 'Проведені', cancelled: 'Скасовані' }[f]}
-        </button>
-      ))}
+      {showStatusFilters && (
+        <div className="admin-cal-filter-row admin-cal-filter-row--status">
+          <span className="admin-cal-filter-label">Статус</span>
+          <div className="admin-cal-filter-chips admin-cal-filter-chips--scroll">
+            <FilterChipBar
+              value={status}
+              onChange={setStatus}
+              chips={STATUS_CHIPS}
+            />
+          </div>
+        </div>
+      )}
 
-      <label className="admin-cal-select-wrap">
-        <span className="admin-cal-select-label">Викладач</span>
-        <select
-          className="admin-cal-select"
-          value={teacherId}
-          onChange={e => setTeacherId(e.target.value)}
-        >
-          <option value="">Усі викладачі</option>
-          {teachers.map(t => (
-            <option key={t.id} value={t.id}>{t.name}</option>
-          ))}
-        </select>
-      </label>
+      <div className="admin-cal-filter-row admin-cal-filter-row--selects">
+        <label className="admin-cal-select-wrap">
+          <span className="admin-cal-select-label">Викладач</span>
+          <select
+            className="admin-cal-select"
+            value={teacherId}
+            onChange={e => setTeacherId(e.target.value)}
+          >
+            <option value="">Усі викладачі</option>
+            {teachers.map(t => (
+              <option key={t.id} value={t.id}>{t.name}</option>
+            ))}
+          </select>
+        </label>
 
-      <label className="admin-cal-select-wrap">
-        <span className="admin-cal-select-label">Учень</span>
-        <select
-          className="admin-cal-select"
-          value={studentId}
-          onChange={e => setStudentId(e.target.value)}
-        >
-          <option value="">Усі учні</option>
-          {students.map(s => (
-            <option key={s.id} value={s.id}>{s.name}</option>
-          ))}
-        </select>
-      </label>
+        <label className="admin-cal-select-wrap">
+          <span className="admin-cal-select-label">Учень</span>
+          <select
+            className="admin-cal-select"
+            value={studentId}
+            onChange={e => setStudentId(e.target.value)}
+          >
+            <option value="">Усі учні</option>
+            {students.map(s => (
+              <option key={s.id} value={s.id}>{s.name}</option>
+            ))}
+          </select>
+        </label>
+      </div>
 
       {!loading && total > events.length && (
-        <span className="admin-cal-hint">
+        <p className="admin-cal-hint">
           Показано {events.length} з {total}
-        </span>
+        </p>
       )}
     </div>
   )
@@ -199,7 +217,6 @@ export function AdminEventsCalendar({
     return (
       <>
         {error && <div className="alert">{error}</div>}
-        {showSyncBar && <AdminOptimateSyncBar cache={cache} onRefreshed={() => load(true)} />}
         {filters}
         {calendar}
       </>
@@ -209,7 +226,6 @@ export function AdminEventsCalendar({
   return (
     <>
       {error && <div className="alert">{error}</div>}
-      {showSyncBar && <AdminOptimateSyncBar cache={cache} onRefreshed={() => load(true)} />}
       {filters}
       <Card title={title}>
         {calendar}

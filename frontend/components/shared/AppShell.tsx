@@ -47,11 +47,20 @@ export default function AppShell({ children, sidebar }: AppShellProps) {
         onToggleCollapse={toggleCollapse}
       />
 
-      <div className="app-main">
+      <div
+        className="app-main"
+        style={
+          {
+            '--accent': sidebarProps.accentColor,
+            '--accent-bg': sidebarProps.accentBg,
+          } as React.CSSProperties
+        }
+      >
         <header className="mobile-topbar">
           <Link href={homeForRole(sidebarProps.role)} className="mobile-topbar-logo" aria-label="На головну">
             <img src="/branding/movna-logo.svg" alt="Movna" width={120} height={28} />
           </Link>
+          <div id="mobile-topbar-actions" className="mobile-topbar-actions" />
         </header>
 
         <main className="main-content">{children}</main>

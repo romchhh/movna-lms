@@ -178,10 +178,11 @@ export default function AdminStudents() {
       <PageHeader
         title="Учні"
         sub={loading ? 'Завантаження з Optimate...' : `${total} в Optimate · стор. ${page}`}
-      />
+      >
+        <AdminOptimateSyncBar cache={cache} onRefreshed={load} />
+      </PageHeader>
 
       {error && <div className="alert">{error}</div>}
-      <AdminOptimateSyncBar cache={cache} onRefreshed={load} />
 
       <div className="admin-filters">
         <input

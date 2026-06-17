@@ -1,5 +1,4 @@
 from pydantic import BaseModel, EmailStr
-from typing import Optional
 from datetime import datetime
 
 from app.models.user import UserRole
@@ -44,11 +43,3 @@ class UserOut(BaseModel):
     created_at: datetime
 
     model_config = {"from_attributes": True}
-
-
-class UserUpdate(BaseModel):
-    first_name: Optional[str] = None
-    last_name: Optional[str] = None
-    phone: Optional[str] = None
-    avatar_url: Optional[str] = None
-    language_level: Optional[str] = None

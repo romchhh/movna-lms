@@ -46,8 +46,6 @@ export const lessonRequestsApi = {
       body: JSON.stringify(body),
     }),
 
-  my: () => request<LessonRequest[]>('/api/lesson-requests/my'),
-
   list: (status = '') =>
     request<LessonRequest[]>(
       `/api/lesson-requests${status ? `?status=${encodeURIComponent(status)}` : ''}`,

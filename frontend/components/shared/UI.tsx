@@ -33,18 +33,6 @@ export function ProgressBar({ pct, color = 'var(--p)', small }: { pct: number; c
   )
 }
 
-// ── Avatar ──────────────────────────────────────────────────────────────────
-export function Avatar({ initials, bg, color, size = 32 }: { initials: string; bg: string; color: string; size?: number }) {
-  return (
-    <div style={{
-      width: size, height: size, borderRadius: '50%',
-      background: bg, color,
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-      fontSize: size < 32 ? 11 : 12, fontWeight: 500, flexShrink: 0,
-    }}>{initials}</div>
-  )
-}
-
 // ── Card ────────────────────────────────────────────────────────────────────
 export function Card({
   title,
@@ -79,25 +67,6 @@ export function PageHeader({ title, sub, children }: { title: string; sub?: stri
         {sub && <p>{sub}</p>}
       </div>
       {children && <div className="page-header-actions">{children}</div>}
-    </div>
-  )
-}
-
-// ── Alert ───────────────────────────────────────────────────────────────────
-export function Alert({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="alert">
-      <div style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--r)', flexShrink: 0 }} />
-      {children}
-    </div>
-  )
-}
-
-// ── Divider Row ──────────────────────────────────────────────────────────────
-export function DivRow({ children }: { children: React.ReactNode }) {
-  return (
-    <div style={{ padding: '9px 0', borderBottom: '.5px solid var(--bd)', display: 'flex', alignItems: 'center', gap: 10 }}>
-      {children}
     </div>
   )
 }
@@ -143,8 +112,14 @@ export function Pagination({
 // ── Empty state ──────────────────────────────────────────────────────────────
 export function Empty({ label }: { label: string }) {
   return (
-    <div style={{ textAlign: 'center', padding: '32px 0', color: 'var(--tx3)', fontSize: 13 }}>
-      {label}
+    <div className="empty-state" role="status">
+      <div className="empty-state-icon" aria-hidden>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75">
+          <circle cx="12" cy="12" r="9" />
+          <line x1="8" y1="12" x2="16" y2="12" />
+        </svg>
+      </div>
+      <p className="empty-state-label">{label}</p>
     </div>
   )
 }

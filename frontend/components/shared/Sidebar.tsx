@@ -2,6 +2,8 @@
 
 import { clearSession, homeForRole } from '@/lib/auth'
 import { isNavActive } from '@/lib/nav-utils'
+import { LogoutNavIcon } from '@/components/shared/NavIcons'
+import { NavSectionIcon } from '@/components/shared/NavSectionIcon'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 
@@ -59,98 +61,106 @@ export default function Sidebar({
         } as React.CSSProperties
       }
     >
-      <div className="sidebar-header">
-        <div className="sidebar-header-brand">
-          <Link
-            href={homeHref}
-            className="sidebar-logo"
-            onClick={onNavigate}
-            aria-label="На головну"
-            title={collapsed ? 'Movna' : undefined}
-          >
-            <img
-              src="/branding/movna-logo.svg"
-              alt="Movna"
-              className="brand-logo"
-              width={157}
-              height={36}
-            />
-            <span className="sidebar-logo-mark" aria-hidden>M</span>
-          </Link>
-          {onToggleCollapse && (
-            <button
-              type="button"
-              className="sidebar-collapse-btn"
-              onClick={onToggleCollapse}
-              aria-label={collapsed ? 'Розгорнути меню' : 'Згорнути меню'}
-              aria-expanded={!collapsed}
-              title={collapsed ? 'Розгорнути' : 'Згорнути'}
+      <div className="sidebar-panel">
+        <div className="sidebar-header">
+          <div className="sidebar-header-brand">
+            <Link
+              href={homeHref}
+              className="sidebar-logo"
+              onClick={onNavigate}
+              aria-label="На головну"
+              title={collapsed ? 'Movna' : undefined}
             >
-              <svg viewBox="0 0 24 24" aria-hidden>
-                {collapsed ? (
-                  <polyline points="9 18 15 12 9 6" />
-                ) : (
-                  <polyline points="15 18 9 12 15 6" />
-                )}
-              </svg>
-            </button>
-          )}
-        </div>
-        <button
-          type="button"
-          className="sidebar-close"
-          aria-label="Закрити меню"
-          onClick={onNavigate}
-        >
-          <svg viewBox="0 0 24 24" aria-hidden>
-            <line x1="18" y1="6" x2="6" y2="18" />
-            <line x1="6" y1="6" x2="18" y2="18" />
-          </svg>
-        </button>
-      </div>
-
-      <nav className="sidebar-nav">
-        {sections.map(section => (
-          <div key={section.label} className="sidebar-group">
-            <div className="sidebar-section">{section.label}</div>
-            {section.items.map(item => {
-              const active = isNavActive(pathname, item.href)
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={`nav-item${active ? ' active' : ''}`}
-                  onClick={onNavigate}
-                  title={collapsed ? item.label : undefined}
-                >
-                  <span className="nav-icon">
-                    {item.icon}
-                    {collapsed && (item.badge ?? 0) > 0 && (
-                      <span className="nav-icon-dot" aria-hidden />
-                    )}
-                  </span>
-                  <span className="nav-label">{item.label}</span>
-                  {!collapsed && (item.badge ?? 0) > 0 && (
-                    <span className="nav-badge">{item.badge}</span>
+              <img
+                src="/branding/movna-logo.svg"
+                alt="Movna"
+                className="brand-logo"
+                width={157}
+                height={36}
+              />
+              <span className="sidebar-logo-mark" aria-hidden>M</span>
+            </Link>
+            {onToggleCollapse && (
+              <button
+                type="button"
+                className="sidebar-collapse-btn"
+                onClick={onToggleCollapse}
+                aria-label={collapsed ? 'Розгорнути меню' : 'Згорнути меню'}
+                aria-expanded={!collapsed}
+                title={collapsed ? 'Розгорнути' : 'Згорнути'}
+              >
+                <svg viewBox="0 0 24 24" aria-hidden>
+                  {collapsed ? (
+                    <polyline points="9 18 15 12 9 6" />
+                  ) : (
+                    <polyline points="15 18 9 12 15 6" />
                   )}
-                </Link>
-              )
-            })}
+                </svg>
+              </button>
+            )}
           </div>
-        ))}
-      </nav>
+          <button
+            type="button"
+            className="sidebar-close"
+            aria-label="Закрити меню"
+            onClick={onNavigate}
+          >
+            <svg viewBox="0 0 24 24" aria-hidden>
+              <line x1="18" y1="6" x2="6" y2="18" />
+              <line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
+          </button>
+        </div>
 
-      <div className="sidebar-bottom">
-        <div className="avatar sidebar-avatar" style={{ background: accentBg, color: accentColor }}>
-          {userInitials}
+        <nav className="sidebar-nav">
+          {sections.map(section => (
+            <div key={section.label} className="sidebar-group">
+              <div className="sidebar-section">
+                <NavSectionIcon label={section.label} />
+                <span>{section.label}</span>
+              </div>
+              {section.items.map(item => {
+                const active = isNavActive(pathname, item.href)
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className={`nav-item${active ? ' active' : ''}`}
+                    onClick={onNavigate}
+                    title={collapsed ? item.label : undefined}
+                  >
+                    <span className="nav-icon">
+                      {item.icon}
+                      {collapsed && (item.badge ?? 0) > 0 && (
+                        <span className="nav-icon-dot" aria-hidden />
+                      )}
+                    </span>
+                    <span className="nav-label">{item.label}</span>
+                    {!collapsed && (item.badge ?? 0) > 0 && (
+                      <span className="nav-badge">{item.badge}</span>
+                    )}
+                  </Link>
+                )
+              })}
+            </div>
+          ))}
+        </nav>
+
+        <div className="sidebar-bottom">
+          <div className="sidebar-user-row">
+            <div className="avatar sidebar-avatar" style={{ background: accentBg, color: accentColor }}>
+              {userInitials}
+            </div>
+            <div className="sidebar-user">
+              <div className="sidebar-user-name">{userName}</div>
+              <div className="sidebar-user-role">{roleLabels[role]}</div>
+            </div>
+          </div>
+          <button type="button" className="sidebar-logout-btn" onClick={logout}>
+            <LogoutNavIcon />
+            <span>Вийти</span>
+          </button>
         </div>
-        <div className="sidebar-user">
-          <div className="sidebar-user-name">{userName}</div>
-          <div className="sidebar-user-role">{roleLabels[role]}</div>
-        </div>
-        <button type="button" className="sidebar-logout" onClick={logout}>
-          Вийти
-        </button>
       </div>
     </aside>
   )

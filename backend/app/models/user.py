@@ -1,7 +1,7 @@
 import enum
 from datetime import datetime
 from sqlalchemy import String, Boolean, DateTime, Enum, Integer, Text
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.orm import Mapped, mapped_column
 from app.core.database import Base
 
 
@@ -36,11 +36,6 @@ class User(Base):
 
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-
-    # Relationships
-    lesson_progress: Mapped[list["LessonProgress"]]  = relationship(back_populates="student", lazy="select")  # noqa
-    submitted_homeworks: Mapped[list["Homework"]]     = relationship(foreign_keys="Homework.student_id", back_populates="student", lazy="select")  # noqa
-    reviewed_homeworks: Mapped[list["Homework"]]      = relationship(foreign_keys="Homework.teacher_id", back_populates="teacher", lazy="select")  # noqa
 
     @property
     def full_name(self) -> str:

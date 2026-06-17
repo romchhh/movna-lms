@@ -4,7 +4,8 @@ import { HomeworkFileLink } from '@/components/homework/HomeworkFileLink'
 import { MarkdownView } from '@/components/homework/MarkdownView'
 import { StatusBadge } from '@/components/shared/StatusBadge'
 import { Badge } from '@/components/shared/UI'
-import { CloseIcon, EditIcon, IconButton } from '@/components/shared/Icons'
+import { AppModalHeader } from '@/components/shared/AppModalHeader'
+import { EditIcon } from '@/components/shared/Icons'
 import { useHomeworkModal } from '@/hooks/useHomeworkModal'
 import {
   HOMEWORK_STATUS_LABELS,
@@ -48,13 +49,11 @@ export function HomeworkTeacherDetailModal({
         aria-modal="true"
         onClick={e => e.stopPropagation()}
       >
-        <div className="hw-modal-header">
-          <div>
-            <h2>{assignment.title}</h2>
-            <p className="hw-modal-sub">{eventLine}</p>
-          </div>
-          <IconButton label="Закрити" onClick={onClose}><CloseIcon /></IconButton>
-        </div>
+        <AppModalHeader
+          title={assignment.title}
+          subtitle={eventLine}
+          onClose={onClose}
+        />
 
         <div className="hw-modal-body">
           <div className="hw-detail-meta">

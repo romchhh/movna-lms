@@ -121,7 +121,7 @@ export default function TeacherDashboard() {
         />
       </div>
 
-      <div className="g2">
+      <div className="g2 dash-grid">
         <Card title="Мої учні">
           {loading && <Empty label="Завантаження..." />}
           {!loading && students.length === 0 && <Empty label="Учнів не знайдено" />}

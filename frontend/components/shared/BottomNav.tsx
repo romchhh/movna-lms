@@ -1,6 +1,7 @@
 'use client'
 
-import { MoreNavIcon } from '@/components/shared/NavIcons'
+import { MoreNavIcon, LogoutNavIcon } from '@/components/shared/NavIcons'
+import { NavSectionIcon } from '@/components/shared/NavSectionIcon'
 import type { NavItem, SidebarProps } from '@/components/shared/Sidebar'
 import { clearSession } from '@/lib/auth'
 import { isNavActive, navShortLabel, splitMobileNav } from '@/lib/nav-utils'
@@ -96,7 +97,10 @@ export default function BottomNav({
             if (items.length === 0) return null
             return (
               <div key={section.label} className="bottom-nav-sheet-group">
-                <div className="bottom-nav-sheet-section">{section.label}</div>
+                <div className="bottom-nav-sheet-section">
+                  <NavSectionIcon label={section.label} />
+                  <span>{section.label}</span>
+                </div>
                 {items.map(item => (
                   <NavSheetLink
                     key={item.href}
@@ -111,7 +115,8 @@ export default function BottomNav({
         </div>
 
         <button type="button" className="bottom-nav-sheet-logout" onClick={logout}>
-          Вийти з акаунту
+          <LogoutNavIcon />
+          <span>Вийти з акаунту</span>
         </button>
       </div>
 

@@ -1,6 +1,7 @@
 'use client'
 
 import { OptimateEntityModal } from '@/components/admin/OptimateEntityModal'
+import { TeacherStudentDetailModal } from '@/components/teacher/TeacherStudentDetailModal'
 import { StatusBadge } from '@/components/shared/StatusBadge'
 import { Badge } from '@/components/shared/UI'
 import { IconButton, ChevronLeftIcon, ChevronRightIcon } from '@/components/shared/Icons'
@@ -59,6 +60,8 @@ interface EventsCalendarProps {
   enableLessonRequests?: boolean
   enableHomework?: boolean
   enableStudentHomework?: boolean
+  enableCurriculumTopic?: boolean
+  curriculumAudience?: 'teacher' | 'student'
   onOpenHomework?: (submissionId: number) => void
   /** Легенда: індивідуальний / груповий / … */
   showFormatLegend?: boolean
@@ -496,6 +499,8 @@ export function EventsCalendar({
   enableLessonRequests = false,
   enableHomework = false,
   enableStudentHomework = false,
+  enableCurriculumTopic = false,
+  curriculumAudience = 'student',
   onOpenHomework,
   showFormatLegend = !embed,
 }: EventsCalendarProps) {
@@ -535,6 +540,7 @@ export function EventsCalendar({
 
   useEffect(() => {
     if (!entityLinks || !entityId || !entityKind) return
+    if (entityLinks === 'teacher' && entityKind === 'student') return
     loadEntity(entityKind, entityId)
   }, [entityLinks, entityId, entityKind, loadEntity])
 
@@ -719,10 +725,21 @@ export function EventsCalendar({
         enableLessonRequests={enableLessonRequests}
         enableHomework={enableHomework}
         enableStudentHomework={enableStudentHomework}
+        enableCurriculumTopic={enableCurriculumTopic}
+        curriculumAudience={curriculumAudience}
         onOpenHomework={onOpenHomework}
       />
 
-      {entityLinks && (
+      {entityLinks === 'teacher' && entityKind === 'student' && (
+        <TeacherStudentDetailModal
+          studentId={entityId}
+          title={entityTitle || undefined}
+          onClose={closeEntity}
+          overlayClassName="optimate-modal-overlay--above-cal"
+        />
+      )}
+
+      {entityLinks && !(entityLinks === 'teacher' && entityKind === 'student') && (
         <OptimateEntityModal
           open={!!entityId && !!entityKind}
           title={entityTitle || (entityKind === 'teacher' ? 'Викладач' : 'Учень')}

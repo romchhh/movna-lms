@@ -1,10 +1,9 @@
 import { RoleLayoutShell } from '@/components/shared/RoleLayoutShell'
 import {
   CalendarNavIcon,
-  CourseNavIcon,
+  CurriculaNavIcon,
   DashNavIcon,
   RequestsNavIcon,
-  SettingsNavIcon,
   StudentsNavIcon,
   TeacherNavIcon,
 } from '@/components/shared/NavIcons'
@@ -23,14 +22,7 @@ const sections = [
       { href: '/admin/teachers', label: 'Викладачі', icon: <TeacherNavIcon /> },
       { href: '/admin/events', label: 'Події', icon: <CalendarNavIcon /> },
       { href: '/admin/requests', label: 'Запити', icon: <RequestsNavIcon /> },
-      { href: '/admin/curricula', label: 'Навчальні програми', icon: <CourseNavIcon /> },
-      { href: '/admin/courses', label: 'Курси', icon: <CourseNavIcon /> },
-    ],
-  },
-  {
-    label: 'Система',
-    items: [
-      { href: '/admin/settings', label: 'Налаштування', icon: <SettingsNavIcon /> },
+      { href: '/admin/curricula', label: 'Навчальні програми', icon: <CurriculaNavIcon /> },
     ],
   },
 ]

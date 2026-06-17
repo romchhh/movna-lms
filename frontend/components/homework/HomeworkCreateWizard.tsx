@@ -3,7 +3,7 @@
 import { HomeworkAssignModal } from '@/components/homework/HomeworkAssignModal'
 import { StatusBadge } from '@/components/shared/StatusBadge'
 import { Badge, Empty } from '@/components/shared/UI'
-import { CloseIcon, IconButton } from '@/components/shared/Icons'
+import { AppModalHeader } from '@/components/shared/AppModalHeader'
 import { useDebouncedValue } from '@/hooks/useDebouncedValue'
 import type { CalendarEvent } from '@/lib/calendar-types'
 import { formatEventDateFull, formatTimeRange } from '@/lib/calendar-utils'
@@ -143,15 +143,11 @@ export function HomeworkCreateWizard({ onClose, onSaved }: HomeworkCreateWizardP
   return (
     <div className="hw-modal-overlay" onClick={onClose}>
       <div className="hw-modal hw-modal--wide hw-wizard" onClick={e => e.stopPropagation()}>
-        <div className="hw-modal-header">
-          <div>
-            <h2>Додати домашнє завдання</h2>
-            <p className="hw-modal-sub">
-              {step === 'student' ? 'Оберіть учня' : `Урок · ${selectedStudent?.full_name}`}
-            </p>
-          </div>
-          <IconButton label="Закрити" onClick={onClose}><CloseIcon /></IconButton>
-        </div>
+        <AppModalHeader
+          title="Додати домашнє завдання"
+          subtitle={step === 'student' ? 'Оберіть учня' : `Урок · ${selectedStudent?.full_name}`}
+          onClose={onClose}
+        />
 
         <div className="hw-modal-body">
           {error && <div className="alert">{error}</div>}

@@ -1,5 +1,6 @@
 'use client'
 
+import { RequestsNavIcon } from '@/components/shared/NavIcons'
 import { lessonRequestsApi } from '@/lib/lesson-requests-api'
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
@@ -26,7 +27,8 @@ export function PendingRequestsAlert({ href }: PendingRequestsAlertProps) {
 
   return (
     <div className="pending-requests-alert">
-      <span>
+      <span className="pending-requests-alert-text">
+        <RequestsNavIcon />
         У вас {count} {verb} {word} на перенесення або скасування заняття
       </span>
       <Link href={href} className="btn btn-sm btn-secondary">

@@ -1,7 +1,5 @@
 /** Спільні UI-хелпери для списків Optimate (учні, викладачі, групи). */
 
-export { statusBadgeVariant } from '@/lib/status-ui'
-
 export function studentInitials(name: string): string {
   return name
     .split(/\s+/)

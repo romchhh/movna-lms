@@ -1,6 +1,7 @@
 'use client'
 
 import { HomeworkAssignModal } from '@/components/homework/HomeworkAssignModal'
+import { AddButtonLabel } from '@/components/shared/AddButtonLabel'
 import { Badge } from '@/components/shared/UI'
 import type { CalendarEvent } from '@/lib/calendar-types'
 import { homeworkApi, type HomeworkAssignment } from '@/lib/homework-api'
@@ -62,7 +63,7 @@ export function EventHomeworkSection({ event }: { event: CalendarEvent }) {
         className="btn btn-sm btn-teal"
         onClick={() => setEditorOpen(true)}
       >
-        {assignment ? 'Редагувати ДЗ' : 'Додати ДЗ'}
+        {assignment ? 'Редагувати ДЗ' : <AddButtonLabel>Додати ДЗ</AddButtonLabel>}
       </button>
 
       {editorOpen && (

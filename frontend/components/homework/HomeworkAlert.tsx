@@ -1,5 +1,6 @@
 'use client'
 
+import { HomeworkNavIcon } from '@/components/shared/NavIcons'
 import {
   filterStudentHomework,
   studentHomeworkCounts,
@@ -25,7 +26,8 @@ export function HomeworkAlert({ onOpen }: HomeworkAlertProps) {
       {active.length > 0 && (
         <div className="hw-alert">
           <div className="hw-alert-body">
-            <strong>
+            <strong className="hw-alert-title">
+              <HomeworkNavIcon />
               {active.length} незавершен{active.length === 1 ? 'е' : 'их'} завдання
             </strong>
             <p>
@@ -52,7 +54,10 @@ export function HomeworkAlert({ onOpen }: HomeworkAlertProps) {
       {withFeedback.length > 0 && (
         <div className="hw-alert hw-alert--feedback">
           <div className="hw-alert-body">
-            <strong>Є коментар від викладача</strong>
+            <strong className="hw-alert-title">
+              <HomeworkNavIcon />
+              Є коментар від викладача
+            </strong>
             <p>
               {withFeedback.length === 1
                 ? withFeedback[0].title

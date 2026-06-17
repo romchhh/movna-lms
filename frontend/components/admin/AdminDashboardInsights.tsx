@@ -197,7 +197,7 @@ export function AdminDashboardInsights({ overview, loading }: AdminDashboardInsi
         </div>
       </section>
 
-      <section className="admin-dash-rankings g2">
+      <section className="admin-dash-rankings g2 dash-grid">
         <Card title={`Топ викладачів · ${overview?.month_label ?? ''}`} className="admin-dash-rank-card">
           {loading && <Empty label="Завантаження..." />}
           {!loading && (overview?.top_teachers_month.length ?? 0) === 0 && (
