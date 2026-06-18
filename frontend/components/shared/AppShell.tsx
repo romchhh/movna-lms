@@ -24,6 +24,11 @@ export default function AppShell({ children, sidebar }: AppShellProps) {
   const isDashboardHome = DASHBOARD_PATHS.has(pathname)
 
   useEffect(() => {
+    document.body.classList.add('app-shell-active')
+    return () => document.body.classList.remove('app-shell-active')
+  }, [])
+
+  useEffect(() => {
     const stored = localStorage.getItem(SIDEBAR_COLLAPSED_KEY)
     if (stored === '1') setCollapsed(true)
     setHydrated(true)

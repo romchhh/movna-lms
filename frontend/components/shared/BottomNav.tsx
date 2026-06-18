@@ -10,6 +10,7 @@ import { isNavActive, navShortLabel, splitMobileNav } from '@/lib/nav-utils'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
+import { createPortal } from 'react-dom'
 
 interface BottomNavProps {
   role: SidebarProps['role']
@@ -35,6 +36,11 @@ export default function BottomNav({
   const pathname = usePathname()
   const router = useRouter()
   const [moreOpen, setMoreOpen] = useState(false)
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
   const { tabs, overflow, sections: grouped } = splitMobileNav(sections, tabHrefs)
   const overflowActive = overflow.some(item => isNavActive(pathname, item.href))
@@ -56,7 +62,7 @@ export default function BottomNav({
 
   const roleLabels = { student: 'Учень', teacher: 'Викладач', admin: 'Адмін' }
 
-  return (
+  const content = (
     <>
       <button
         type="button"
@@ -159,6 +165,9 @@ export default function BottomNav({
       </nav>
     </>
   )
+
+  if (!mounted) return null
+  return createPortal(content, document.body)
 }
 
 function BottomNavTab({ item, active }: { item: NavItem; active: boolean }) {
