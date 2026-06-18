@@ -3,9 +3,10 @@
 import { TeacherStudentDetailModal } from '@/components/teacher/TeacherStudentDetailModal'
 import { FilterChipBar } from '@/components/shared/FilterChipBar'
 import { StatusBadge } from '@/components/shared/StatusBadge'
+import { UserAvatar } from '@/components/shared/UserAvatar'
 import { Card, Empty, PageHeader, Pagination } from '@/components/shared/UI'
 import { useDebouncedValue } from '@/hooks/useDebouncedValue'
-import { studentInitials } from '@/lib/optimate-ui'
+import { useLmsProfiles } from '@/hooks/useLmsProfiles'
 import { TeacherStudent, teacherOptimateApi } from '@/lib/teacher-optimate-api'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 
@@ -75,6 +76,9 @@ export default function TeacherStudentsPage() {
     return `${filtered.length} ${filterLabel.toLowerCase()} · ${total} учнів · стор. ${page}`
   }, [loading, total, page, statusFilter, filtered.length])
 
+  const studentIds = useMemo(() => filtered.map(s => s.id), [filtered])
+  useLmsProfiles(studentIds)
+
   function openStudent(student: TeacherStudent) {
     setSelectedId(student.id)
     setSelectedTitle(student.full_name)
@@ -138,7 +142,7 @@ export default function TeacherStudentsPage() {
             onClick={() => openStudent(student)}
           >
             <div className="teacher-students-main">
-              <div className="admin-teacher-avatar">{studentInitials(student.full_name)}</div>
+              <UserAvatar name={student.full_name} optimateId={student.id} size="lg" kind="student" />
               <div>
                 <div className="admin-table-title">{student.full_name}</div>
                 <div className="admin-table-sub">

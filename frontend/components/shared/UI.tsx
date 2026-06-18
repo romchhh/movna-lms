@@ -125,17 +125,28 @@ export function Empty({ label }: { label: string }) {
 }
 
 // ── Toggle ──────────────────────────────────────────────────────────────────
-export function Toggle({ on, onToggle, accent = 'var(--p)' }: { on: boolean; onToggle: () => void; accent?: string }) {
+export function Toggle({
+  on,
+  onToggle,
+  accent = 'var(--p)',
+  disabled = false,
+}: {
+  on: boolean
+  onToggle: () => void
+  accent?: string
+  disabled?: boolean
+}) {
   return (
     <div
-      onClick={onToggle}
+      onClick={disabled ? undefined : onToggle}
       style={{
         width: 36, height: 20, borderRadius: 10,
         background: on ? accent : 'var(--bg3)',
         display: 'flex', alignItems: 'center',
-        padding: 2, cursor: 'pointer', flexShrink: 0,
+        padding: 2, cursor: disabled ? 'not-allowed' : 'pointer', flexShrink: 0,
         justifyContent: on ? 'flex-end' : 'flex-start',
         transition: 'background .2s',
+        opacity: disabled ? 0.55 : 1,
       }}
     >
       <div style={{ width: 16, height: 16, borderRadius: '50%', background: '#fff' }} />

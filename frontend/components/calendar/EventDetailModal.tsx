@@ -13,6 +13,8 @@ import { EventHomeworkSection } from '@/components/homework/EventHomeworkSection
 import { StudentEventHomeworkSection } from '@/components/homework/StudentEventHomeworkSection'
 import { EventCurriculumTopicSection } from '@/components/curriculum/EventCurriculumTopicSection'
 import { ConfirmDialog } from '@/components/lesson-requests/ConfirmDialog'
+import { TeacherAboutBlock, UserAvatar } from '@/components/shared/UserAvatar'
+import { useLmsProfiles } from '@/hooks/useLmsProfiles'
 import { lessonRequestsApi } from '@/lib/lesson-requests-api'
 import { isEventActive } from '@/lib/optimate-api'
 import { useEffect, useState, type ReactNode } from 'react'
@@ -41,6 +43,9 @@ function ParticipantsRow({
   participants: CalendarParticipant[]
   onParticipantClick?: (participant: CalendarParticipant) => void
 }) {
+  const ids = participants.map(p => p.id).filter(Boolean)
+  useLmsProfiles(ids)
+
   if (!participants.length) return null
 
   return (
@@ -54,10 +59,16 @@ function ParticipantsRow({
             <Tag
               key={`${p.kind}-${p.id || p.name}-${i}`}
               type={clickable ? 'button' : undefined}
-              className={`cal-participant-chip${clickable ? ' cal-participant-chip--link' : ''}`}
+              className={`cal-participant-chip cal-participant-chip--with-avatar${clickable ? ' cal-participant-chip--link' : ''}`}
               onClick={clickable ? () => onParticipantClick!(p) : undefined}
             >
-              {p.name}
+              <UserAvatar
+                name={p.name}
+                optimateId={p.id || undefined}
+                size="xs"
+                kind={p.kind === 'teacher' ? 'teacher' : 'student'}
+              />
+              <span>{p.name}</span>
             </Tag>
           )
         })}
@@ -271,6 +282,11 @@ export function EventDetailModal({
               participants={students}
               onParticipantClick={onParticipantClick}
             />
+            {teachers.map(t => (
+              t.id ? (
+                <TeacherAboutBlock key={`about-${t.id}`} optimateId={t.id} />
+              ) : null
+            ))}
           </div>
 
           {onParticipantClick && (teachers.some(t => t.id) || students.some(s => s.id)) && (

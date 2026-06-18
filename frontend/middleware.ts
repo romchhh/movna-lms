@@ -29,7 +29,10 @@ export function middleware(request: NextRequest) {
   const { role, expired } = token ? decodeTokenPayload(token) : { role: null, expired: false }
   const hasValidToken = Boolean(token && role && !expired)
 
-  const isPublic = path.startsWith('/auth')
+  const isPublic =
+    path.startsWith('/auth') ||
+    path === '/privacy' ||
+    path === '/terms'
 
   if (!hasValidToken && !isPublic) {
     const response = NextResponse.redirect(new URL('/auth/login', request.url))

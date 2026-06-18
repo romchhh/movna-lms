@@ -2,6 +2,8 @@
 
 import { clearSession, homeForRole } from '@/lib/auth'
 import { isNavActive } from '@/lib/nav-utils'
+import { UserAvatar } from '@/components/shared/UserAvatar'
+import { SidebarCollapseIcon } from '@/components/shared/SidebarCollapseIcon'
 import { LogoutNavIcon } from '@/components/shared/NavIcons'
 import { NavSectionIcon } from '@/components/shared/NavSectionIcon'
 import Link from 'next/link'
@@ -12,12 +14,14 @@ export interface NavItem {
   label: string
   icon: React.ReactNode
   badge?: number
+  badgeAttention?: boolean
 }
 
 export interface SidebarProps {
   role: 'student' | 'teacher' | 'admin'
   userName: string
   userInitials: string
+  avatarUrl?: string
   accentColor: string
   accentBg: string
   sections: { label: string; items: NavItem[] }[]
@@ -31,6 +35,7 @@ export default function Sidebar({
   role,
   userName,
   userInitials,
+  avatarUrl = '',
   accentColor,
   accentBg,
   sections,
@@ -74,11 +79,18 @@ export default function Sidebar({
               <img
                 src="/branding/movna-logo.svg"
                 alt="Movna"
-                className="brand-logo"
+                className="brand-logo brand-logo--full"
                 width={157}
                 height={36}
               />
-              <span className="sidebar-logo-mark" aria-hidden>M</span>
+              <img
+                src="/branding/little_logo.svg"
+                alt=""
+                className="brand-logo brand-logo--compact"
+                width={36}
+                height={22}
+                aria-hidden
+              />
             </Link>
             {onToggleCollapse && (
               <button
@@ -87,15 +99,9 @@ export default function Sidebar({
                 onClick={onToggleCollapse}
                 aria-label={collapsed ? 'Розгорнути меню' : 'Згорнути меню'}
                 aria-expanded={!collapsed}
-                title={collapsed ? 'Розгорнути' : 'Згорнути'}
+                title={collapsed ? 'Розгорнути меню' : 'Згорнути меню'}
               >
-                <svg viewBox="0 0 24 24" aria-hidden>
-                  {collapsed ? (
-                    <polyline points="9 18 15 12 9 6" />
-                  ) : (
-                    <polyline points="15 18 9 12 15 6" />
-                  )}
-                </svg>
+                <SidebarCollapseIcon collapsed={collapsed} />
               </button>
             )}
           </div>
@@ -132,12 +138,17 @@ export default function Sidebar({
                     <span className="nav-icon">
                       {item.icon}
                       {collapsed && (item.badge ?? 0) > 0 && (
-                        <span className="nav-icon-dot" aria-hidden />
+                        <span
+                          className={`nav-icon-dot${item.badgeAttention ? ' nav-icon-dot--attention' : ''}`}
+                          aria-hidden
+                        />
                       )}
                     </span>
                     <span className="nav-label">{item.label}</span>
                     {!collapsed && (item.badge ?? 0) > 0 && (
-                      <span className="nav-badge">{item.badge}</span>
+                      <span className={`nav-badge${item.badgeAttention ? ' nav-badge--attention' : ''}`}>
+                        {item.badge}
+                      </span>
                     )}
                   </Link>
                 )
@@ -148,9 +159,13 @@ export default function Sidebar({
 
         <div className="sidebar-bottom">
           <div className="sidebar-user-row">
-            <div className="avatar sidebar-avatar" style={{ background: accentBg, color: accentColor }}>
-              {userInitials}
-            </div>
+            <UserAvatar
+              name={userName}
+              avatarUrl={avatarUrl}
+              size="md"
+              kind={role === 'teacher' ? 'teacher' : role === 'student' ? 'student' : 'admin'}
+              className="sidebar-avatar-slot"
+            />
             <div className="sidebar-user">
               <div className="sidebar-user-name">{userName}</div>
               <div className="sidebar-user-role">{roleLabels[role]}</div>

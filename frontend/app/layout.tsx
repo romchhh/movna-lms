@@ -5,6 +5,11 @@ import type { Metadata, Viewport } from 'next'
 export const metadata: Metadata = {
   title: 'MOVNA LMS',
   description: 'Навчальна платформа школи MOVNA',
+  icons: {
+    icon: '/branding/little_logo.svg',
+    shortcut: '/branding/little_logo.svg',
+    apple: '/branding/little_logo.svg',
+  },
 }
 
 export const viewport: Viewport = {

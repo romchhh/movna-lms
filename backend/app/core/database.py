@@ -20,7 +20,7 @@ class Base(DeclarativeBase):
 async def init_db():
     async with engine.begin() as conn:
         # Import all models so Base knows about them
-        from app.models import user, lesson_request, event_homework, teacher_curriculum, student_curriculum  # noqa
+        from app.models import user, lesson_request, event_homework, teacher_curriculum, student_curriculum, faq  # noqa
         await conn.run_sync(Base.metadata.create_all)
         await conn.run_sync(_ensure_user_columns)
 
@@ -35,6 +35,26 @@ def _ensure_user_columns(connection):
     if "login_password_enc" not in columns:
         connection.execute(
             text("ALTER TABLE users ADD COLUMN login_password_enc VARCHAR(512) DEFAULT ''")
+        )
+    if "zoom_url" not in columns:
+        connection.execute(
+            text("ALTER TABLE users ADD COLUMN zoom_url VARCHAR(500) DEFAULT ''")
+        )
+    if "miro_url" not in columns:
+        connection.execute(
+            text("ALTER TABLE users ADD COLUMN miro_url VARCHAR(500) DEFAULT ''")
+        )
+    if "notify_homework" not in columns:
+        connection.execute(
+            text("ALTER TABLE users ADD COLUMN notify_homework BOOLEAN DEFAULT 1")
+        )
+    if "notify_lesson_reminder" not in columns:
+        connection.execute(
+            text("ALTER TABLE users ADD COLUMN notify_lesson_reminder BOOLEAN DEFAULT 1")
+        )
+    if "about_me" not in columns:
+        connection.execute(
+            text("ALTER TABLE users ADD COLUMN about_me TEXT DEFAULT ''")
         )
 
 

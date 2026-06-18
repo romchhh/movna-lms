@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState, type CSSProperties } from 'react'
 import { BirthDateFields } from '@/components/settings/BirthDateFields'
+import { ProfileAvatarEditor } from '@/components/settings/ProfileAvatarEditor'
 import { Card } from '@/components/shared/UI'
 import {
   optimateApi,
@@ -10,6 +11,7 @@ import {
   type StudentProfile,
   type StudentProfileUpdate,
 } from '@/lib/optimate-api'
+import { profileApi, type LmsProfile } from '@/lib/profile-api'
 import {
   teacherOptimateApi,
   type TeacherProfile,
@@ -45,6 +47,7 @@ export function OptimateProfileCard({ role }: { role: Role }) {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
+  const [lmsProfile, setLmsProfile] = useState<LmsProfile | null>(null)
 
   const [firstName, setFirstName] = useState('')
   const [lastName, setLastName] = useState('')
@@ -77,7 +80,7 @@ export function OptimateProfileCard({ role }: { role: Role }) {
     let cancelled = false
     setLoading(true)
     setError(null)
-    const load =
+    const loadOptimate =
       role === 'student'
         ? optimateApi.profile().then(p => {
             if (!cancelled) applyStudent(p)
@@ -86,7 +89,14 @@ export function OptimateProfileCard({ role }: { role: Role }) {
             if (!cancelled) applyTeacher(p)
           })
 
-    load
+    Promise.all([
+      loadOptimate,
+      profileApi.me().then(p => {
+        if (!cancelled) setLmsProfile(p)
+      }).catch(() => {
+        if (!cancelled) setLmsProfile(null)
+      }),
+    ])
       .catch(e => {
         if (!cancelled) setError(e instanceof Error ? e.message : 'Помилка завантаження')
       })
@@ -133,10 +143,14 @@ export function OptimateProfileCard({ role }: { role: Role }) {
           last_name: ln,
           description,
         }
-        const updated = await teacherOptimateApi.updateProfile(payload)
+        const [updated] = await Promise.all([
+          teacherOptimateApi.updateProfile(payload),
+          profileApi.updateMe({ about_me: description.trim() }),
+        ])
         applyTeacher(updated)
+        setLmsProfile(prev => prev ? { ...prev, about_me: description.trim() } : prev)
       }
-      setSuccess('Збережено в Optimate')
+      setSuccess('Збережено')
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Не вдалося зберегти')
     } finally {
@@ -144,7 +158,7 @@ export function OptimateProfileCard({ role }: { role: Role }) {
     }
   }
 
-  const initials = profileInitials(firstName, lastName)
+  const displayName = [firstName, lastName].filter(Boolean).join(' ') || profileInitials(firstName, lastName)
   const title = role === 'student' ? 'Мій профіль' : 'Профіль викладача'
   const btnClass = role === 'student' ? 'btn btn-primary' : 'btn btn-teal'
 
@@ -160,8 +174,8 @@ export function OptimateProfileCard({ role }: { role: Role }) {
     <Card title={title}>
       <p style={{ fontSize: 12, color: 'var(--tx2)', margin: '0 0 12px' }}>
         {role === 'student'
-          ? 'Ім’я, прізвище та дата народження синхронізуються з Optimate CRM.'
-          : 'Ім’я та опис синхронізуються з Optimate CRM.'}
+          ? 'Ім’я та дата народження синхронізуються з Optimate CRM. Фото зберігається в LMS.'
+          : 'Ім’я та «Про себе» синхронізуються з Optimate і видно учням та адмінам. Фото — у LMS.'}
       </p>
       <div style={fieldGap()}>
         {error && (
@@ -171,24 +185,12 @@ export function OptimateProfileCard({ role }: { role: Role }) {
           <p style={{ fontSize: 13, color: 'var(--g)', margin: 0 }}>{success}</p>
         )}
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 4 }}>
-          <div
-            style={{
-              width: 52,
-              height: 52,
-              borderRadius: '50%',
-              background: role === 'student' ? 'var(--pl)' : 'var(--tl)',
-              color: role === 'student' ? 'var(--p)' : 'var(--t)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: 18,
-              fontWeight: 500,
-            }}
-          >
-            {initials}
-          </div>
-        </div>
+        <ProfileAvatarEditor
+          name={displayName}
+          profile={lmsProfile}
+          role={role}
+          onUpdated={setLmsProfile}
+        />
 
         <div>
           <label style={labelStyle()}>Ім&apos;я</label>
@@ -247,7 +249,11 @@ export function OptimateProfileCard({ role }: { role: Role }) {
               onChange={e => setDescription(e.target.value)}
               rows={5}
               style={{ resize: 'vertical', minHeight: 100 }}
+              placeholder="Коротко про досвід, підхід до навчання, інтереси…"
             />
+            <p style={{ fontSize: 11, color: 'var(--tx3)', marginTop: 4, marginBottom: 0 }}>
+              Цей текст бачать учні та адміністратори у вашому профілі та під час уроків.
+            </p>
           </div>
         )}
 

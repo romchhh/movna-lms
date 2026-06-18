@@ -16,13 +16,15 @@ interface TeacherLessonStatsPanelProps {
   stats: TeacherLessonStats | null
   loading?: boolean
   compact?: boolean
+  /** Full-width hero KPIs on teacher dashboard */
+  prominent?: boolean
 }
 
 function fmt(n: number) {
   return n.toLocaleString('uk-UA')
 }
 
-export function TeacherLessonStatsPanel({ stats, loading, compact }: TeacherLessonStatsPanelProps) {
+export function TeacherLessonStatsPanel({ stats, loading, compact, prominent }: TeacherLessonStatsPanelProps) {
   const monthLabel = stats?.month_label ?? '…'
   const changePct = stats?.month_change_pct ?? 0
   const changeLabel =
@@ -195,7 +197,7 @@ export function TeacherLessonStatsPanel({ stats, loading, compact }: TeacherLess
   }
 
   return (
-    <div className="card tls-card-wrap">
+    <div className={`card tls-card-wrap${prominent ? ' tls-card-wrap--prominent' : ''}`}>
       <div className="tls-card-head">
         <h2 className="tls-card-title">Статистика уроків</h2>
         {!loading && monthLabel !== '…' && (

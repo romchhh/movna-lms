@@ -1,4 +1,4 @@
-import { RoleLayoutShell } from '@/components/shared/RoleLayoutShell'
+import { TeacherLayoutShell } from '@/components/shared/TeacherLayoutShell'
 import {
   CalendarNavIcon,
   CurriculaNavIcon,
@@ -8,6 +8,7 @@ import {
   RequestsNavIcon,
   SettingsNavIcon,
   StudentsNavIcon,
+  SupportNavIcon,
 } from '@/components/shared/NavIcons'
 
 const sections = [
@@ -31,6 +32,7 @@ const sections = [
   {
     label: 'Інше',
     items: [
+      { href: '/teacher/support', label: 'Підтримка та FAQ', icon: <SupportNavIcon /> },
       { href: '/teacher/settings', label: 'Налаштування', icon: <SettingsNavIcon /> },
     ],
   },
@@ -38,7 +40,7 @@ const sections = [
 
 export default function TeacherLayout({ children }: { children: React.ReactNode }) {
   return (
-    <RoleLayoutShell
+    <TeacherLayoutShell
       sidebar={{
         role: 'teacher',
         userName: 'Марія Іваненко',
@@ -48,6 +50,7 @@ export default function TeacherLayout({ children }: { children: React.ReactNode 
         sections,
         requestsHref: '/teacher/requests',
         homeworkHref: '/teacher/homework',
+        settingsHref: '/teacher/settings',
         mobileTabHrefs: [
           '/teacher',
           '/teacher/students',
@@ -57,6 +60,6 @@ export default function TeacherLayout({ children }: { children: React.ReactNode 
       }}
     >
       {children}
-    </RoleLayoutShell>
+    </TeacherLayoutShell>
   )
 }

@@ -1,4 +1,4 @@
-import { RoleLayoutShell } from '@/components/shared/RoleLayoutShell'
+import { StudentLayoutShell } from '@/components/shared/StudentLayoutShell'
 import {
   BalanceNavIcon,
   CalendarNavIcon,
@@ -6,6 +6,7 @@ import {
   DashNavIcon,
   HomeworkNavIcon,
   SettingsNavIcon,
+  SupportNavIcon,
 } from '@/components/shared/NavIcons'
 
 const sections = [
@@ -27,6 +28,7 @@ const sections = [
   {
     label: 'Інше',
     items: [
+      { href: '/student/support', label: 'Підтримка та FAQ', icon: <SupportNavIcon /> },
       { href: '/student/settings', label: 'Налаштування', icon: <SettingsNavIcon /> },
     ],
   },
@@ -34,7 +36,7 @@ const sections = [
 
 export default function StudentLayout({ children }: { children: React.ReactNode }) {
   return (
-    <RoleLayoutShell
+    <StudentLayoutShell
       sidebar={{
         role: 'student',
         userName: 'Олена Коваль',
@@ -52,6 +54,6 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
       }}
     >
       {children}
-    </RoleLayoutShell>
+    </StudentLayoutShell>
   )
 }

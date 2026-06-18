@@ -30,6 +30,17 @@ class User(Base):
     # Optimeite sync
     optimeit_id: Mapped[str]    = mapped_column(String(100), default="", index=True)
 
+    # Teacher meeting links (LMS-only)
+    zoom_url: Mapped[str]       = mapped_column(String(500), default="")
+    miro_url: Mapped[str]       = mapped_column(String(500), default="")
+
+    # LMS profile (avatar shown across portal; about_me for teachers)
+    about_me: Mapped[str]       = mapped_column(Text, default="")
+
+    # Teacher notification preferences (LMS-only)
+    notify_homework: Mapped[bool] = mapped_column(Boolean, default=True)
+    notify_lesson_reminder: Mapped[bool] = mapped_column(Boolean, default=True)
+
     # State
     is_active: Mapped[bool]     = mapped_column(Boolean, default=True)
     is_verified: Mapped[bool]   = mapped_column(Boolean, default=False)

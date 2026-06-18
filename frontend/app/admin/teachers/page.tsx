@@ -3,7 +3,9 @@
 import { AdminOptimateSyncBar } from '@/components/admin/AdminOptimateSyncBar'
 import { OptimateEntityModal } from '@/components/admin/OptimateEntityModal'
 import { StatusBadge } from '@/components/shared/StatusBadge'
+import { PersonRow, TeacherAboutBlock } from '@/components/shared/UserAvatar'
 import { PageHeader, Card, Empty, Pagination } from '@/components/shared/UI'
+import { useLmsProfiles } from '@/hooks/useLmsProfiles'
 import {
   TeacherListItem,
   adminOptimateApi,
@@ -12,7 +14,7 @@ import {
 import { useDebouncedValue } from '@/hooks/useDebouncedValue'
 import { CacheMeta } from '@/lib/optimate-api'
 import type { TeacherLessonStats } from '@/lib/teacher-optimate-api'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 
 const PAGE_SIZE = 50
 
@@ -99,6 +101,8 @@ export default function AdminTeachers() {
 
   const selectedTeacher = teachers.find(t => t.id === selectedId)
   const totalStudents = teachers.reduce((sum, t) => sum + (t.students_count ?? 0), 0)
+  const teacherIds = useMemo(() => teachers.map(t => t.id), [teachers])
+  const { get: getProfile } = useLmsProfiles(teacherIds)
 
   return (
     <>
@@ -125,41 +129,45 @@ export default function AdminTeachers() {
         {loading && <Empty label="Завантаження..." />}
         {!loading && teachers.length === 0 && <Empty label="Викладачів не знайдено" />}
 
-        {teachers.map(t => (
+        {teachers.map(t => {
+          const aboutPreview = (getProfile(t.id)?.about_me || stripHtml(t.description || '')).trim()
+          return (
           <Card key={t.id}>
-            <button type="button" className="admin-teacher-row" onClick={() => openDetail(t.id)}>
-              <div className="admin-teacher-avatar">
-                {t.full_name.split(' ').map(n => n[0]).join('').slice(0, 2)}
-              </div>
-              <div style={{ flex: 1, textAlign: 'left' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-                  <span className="admin-table-title">{t.full_name}</span>
-                  <StatusBadge label={t.status_label} status={t.status} />
-                </div>
-                <div className="admin-table-sub">{t.email || t.phone || `ID ${t.id}`}</div>
-                {t.description && (
-                  <div className="admin-table-sub">{stripHtml(t.description).slice(0, 120)}</div>
-                )}
-              </div>
-              <div className="admin-teacher-stats">
-                <div>
-                  <div className="admin-teacher-stat-value">{t.product_count}</div>
-                  <div className="admin-teacher-stat-label">Продукти</div>
-                </div>
-                <div>
-                  <div className="admin-teacher-stat-value">{t.students_count ?? '—'}</div>
-                  <div className="admin-teacher-stat-label">Учні</div>
-                </div>
-                <div>
-                  <div className="admin-teacher-stat-value" style={{ color: (t.unmarked_lesson_count ?? 0) > 0 ? 'var(--rd)' : 'var(--td)' }}>
-                    {t.unmarked_lesson_count ?? 0}
+            <PersonRow
+              name={t.full_name}
+              optimateId={t.id}
+              kind="teacher"
+              onClick={() => openDetail(t.id)}
+              titleAddon={<StatusBadge label={t.status_label} status={t.status} />}
+              subtitle={
+                <>
+                  <div>{t.email || t.phone || `ID ${t.id}`}</div>
+                  {aboutPreview && (
+                    <div className="person-row-about-preview">{aboutPreview.slice(0, 140)}{aboutPreview.length > 140 ? '…' : ''}</div>
+                  )}
+                </>
+              }
+              meta={
+                <div className="admin-teacher-stats">
+                  <div>
+                    <div className="admin-teacher-stat-value">{t.product_count}</div>
+                    <div className="admin-teacher-stat-label">Продукти</div>
                   </div>
-                  <div className="admin-teacher-stat-label">Непроверено</div>
+                  <div>
+                    <div className="admin-teacher-stat-value">{t.students_count ?? '—'}</div>
+                    <div className="admin-teacher-stat-label">Учні</div>
+                  </div>
+                  <div>
+                    <div className="admin-teacher-stat-value" style={{ color: (t.unmarked_lesson_count ?? 0) > 0 ? 'var(--rd)' : 'var(--td)' }}>
+                      {t.unmarked_lesson_count ?? 0}
+                    </div>
+                    <div className="admin-teacher-stat-label">Неперевірено</div>
+                  </div>
                 </div>
-              </div>
-            </button>
+              }
+            />
           </Card>
-        ))}
+        )})}
       </div>
 
       <Pagination page={page} pageSize={PAGE_SIZE} total={total} onPageChange={setPage} />

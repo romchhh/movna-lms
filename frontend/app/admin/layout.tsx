@@ -5,6 +5,7 @@ import {
   DashNavIcon,
   RequestsNavIcon,
   StudentsNavIcon,
+  SupportNavIcon,
   TeacherNavIcon,
 } from '@/components/shared/NavIcons'
 
@@ -23,6 +24,7 @@ const sections = [
       { href: '/admin/events', label: 'Події', icon: <CalendarNavIcon /> },
       { href: '/admin/requests', label: 'Запити', icon: <RequestsNavIcon /> },
       { href: '/admin/curricula', label: 'Навчальні програми', icon: <CurriculaNavIcon /> },
+      { href: '/admin/faq', label: 'FAQ', icon: <SupportNavIcon /> },
     ],
   },
 ]

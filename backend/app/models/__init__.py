@@ -1,3 +1,4 @@
+from app.models.faq import FaqAudience, FaqItem
 from app.models.user import User, UserRole
 from app.models.lesson_request import LessonRequest, LessonRequestType, LessonRequestStatus
 from app.models.event_homework import (
@@ -25,4 +26,5 @@ __all__ = [
     "TeacherCurriculum", "TeacherCurriculumModule", "TeacherCurriculumLesson",
     "StudentCurriculumEnrollment", "StudentCurriculumSlot",
     "CurriculumSource", "EnrollmentStatus", "SlotStatus",
+    "FaqItem", "FaqAudience",
 ]

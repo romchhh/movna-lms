@@ -8,6 +8,8 @@ import { PortalLoginPasswordPanel } from '@/components/admin/PortalLoginPassword
 import { OptimateNotesList } from '@/components/admin/OptimateNotesList'
 import { TeacherLessonStatsPanel } from '@/components/teacher/TeacherLessonStatsPanel'
 import { AppModalHeader } from '@/components/shared/AppModalHeader'
+import { TeacherAboutBlock, UserAvatar } from '@/components/shared/UserAvatar'
+import { useLmsProfile } from '@/hooks/useLmsProfiles'
 import type { TeacherLessonStats } from '@/lib/teacher-optimate-api'
 import { useEffect } from 'react'
 
@@ -110,6 +112,9 @@ export function OptimateEntityModal({
   lessonStatsLoading,
   extraSections,
 }: OptimateEntityModalProps) {
+  const resolvedEntityId = entityId ?? (data?.id != null ? String(data.id) : null)
+  const { profile: lmsProfile } = useLmsProfile(resolvedEntityId ?? undefined)
+
   useEffect(() => {
     if (!open) return
     function onKey(e: KeyboardEvent) {
@@ -121,7 +126,7 @@ export function OptimateEntityModal({
 
   if (!open) return null
 
-  const resolvedEntityId = entityId ?? (data?.id != null ? String(data.id) : null)
+  const displayName = title || String(data?.full_name ?? data?.first_name ?? 'Профіль')
   const productsSummary = (data?.products_summary as ProductSummary[] | undefined) ?? []
   const contacts = (data?.contacts as { type: string; value: string }[] | undefined) ?? []
   const studentTeachers = kind === 'student' && data
@@ -148,6 +153,27 @@ export function OptimateEntityModal({
           onRefresh={onRefresh}
           refreshLoading={loading}
         />
+
+        {data && (
+          <div className="optimate-modal-profile-head">
+            <UserAvatar
+              name={displayName}
+              optimateId={resolvedEntityId ?? undefined}
+              avatarUrl={lmsProfile?.avatar_url}
+              size="xl"
+              kind={kind === 'teacher' ? 'teacher' : 'student'}
+            />
+            <div className="optimate-modal-profile-head-text">
+              <div className="optimate-modal-profile-name">{displayName}</div>
+              {kind === 'teacher' && (
+                <TeacherAboutBlock
+                  optimateId={resolvedEntityId ?? undefined}
+                  fallbackAbout={data.description ? stripHtml(String(data.description)) : undefined}
+                />
+              )}
+            </div>
+          </div>
+        )}
 
         <div className="optimate-modal-body">
           {loading && !data && <p>Завантаження деталей...</p>}
@@ -176,7 +202,7 @@ export function OptimateEntityModal({
                   {kind === 'teacher' && (
                     <>
                       <KeyValue label="Учнів" value={String(data.students_count ?? stats.studentsCount ?? '—')} />
-                      <KeyValue label="Непроверених уроків" value={String(data.unmarked_lesson_count ?? stats.unmarkedLessonCount ?? '—')} />
+                      <KeyValue label="Неперевірених уроків" value={String(data.unmarked_lesson_count ?? stats.unmarkedLessonCount ?? '—')} />
                       <KeyValue label="Доступ" value={String(data.auth_status_label ?? '—')} />
                     </>
                   )}
@@ -192,7 +218,7 @@ export function OptimateEntityModal({
                     } />
                   )}
                 </div>
-                {kind === 'teacher' && Boolean(data.description) && (
+                {kind === 'teacher' && Boolean(data.description) && !lmsProfile?.about_me && (
                   <p className="optimate-detail-description">{stripHtml(String(data.description))}</p>
                 )}
               </DetailSection>

@@ -149,6 +149,8 @@ async def update_teacher_profile(
         current_user.first_name = body.first_name.strip()
     if body.last_name is not None:
         current_user.last_name = body.last_name.strip()
+    if body.description is not None:
+        current_user.about_me = body.description.strip()
     await db.flush()
 
     invalidate_teacher_cache(teacher_id)

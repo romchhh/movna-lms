@@ -2,9 +2,10 @@
 
 import { TeacherStudentDetailModal } from '@/components/teacher/TeacherStudentDetailModal'
 import { StatusBadge } from '@/components/shared/StatusBadge'
+import { UserAvatar } from '@/components/shared/UserAvatar'
 import { Card, Empty, PageHeader } from '@/components/shared/UI'
+import { useLmsProfiles } from '@/hooks/useLmsProfiles'
 import { groupStatusMeta } from '@/lib/status-ui'
-import { studentInitials } from '@/lib/optimate-ui'
 import { TeacherGroup, teacherOptimateApi } from '@/lib/teacher-optimate-api'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 
@@ -38,6 +39,12 @@ export default function TeacherGroups() {
     () => groups.reduce((sum, group) => sum + group.students.length, 0),
     [groups],
   )
+
+  const allStudentIds = useMemo(
+    () => groups.flatMap(g => g.students.map(s => s.id)),
+    [groups],
+  )
+  useLmsProfiles(allStudentIds)
 
   function openStudent(id: string, name: string) {
     setSelectedId(id)
@@ -104,7 +111,7 @@ export default function TeacherGroups() {
                 onClick={() => openStudent(student.id, student.full_name)}
               >
                 <div className="teacher-students-main">
-                  <div className="admin-teacher-avatar">{studentInitials(student.full_name)}</div>
+                  <UserAvatar name={student.full_name} optimateId={student.id} size="lg" kind="student" />
                   <div className="admin-table-title">{student.full_name}</div>
                 </div>
             <div style={{ textAlign: 'inherit' }}>

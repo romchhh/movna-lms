@@ -71,6 +71,7 @@ export default function AppShell({ children, sidebar }: AppShellProps) {
           role={sidebarProps.role}
           userName={sidebarProps.userName}
           userInitials={sidebarProps.userInitials}
+          avatarUrl={sidebarProps.avatarUrl}
           accentColor={sidebarProps.accentColor}
           accentBg={sidebarProps.accentBg}
           sections={sidebarProps.sections}

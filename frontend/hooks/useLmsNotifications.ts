@@ -3,7 +3,9 @@
 import { HOMEWORK_UPDATED_EVENT } from '@/lib/homework-events'
 import { homeworkApi } from '@/lib/homework-api'
 import { lessonRequestsApi } from '@/lib/lesson-requests-api'
+import { NOTIFICATION_PREFERENCES_UPDATED_EVENT } from '@/lib/notification-preferences-api'
 import { playNotificationSound, unlockNotificationSound } from '@/lib/notification-sound'
+import { useTeacherNotificationPreferences } from '@/hooks/useTeacherNotificationPreferences'
 import { useCallback, useEffect, useRef, useState } from 'react'
 
 const POLL_MS = 30_000
@@ -13,6 +15,7 @@ type LmsRole = 'student' | 'teacher' | 'admin'
 export function useLmsNotifications(role: LmsRole) {
   const [homeworkCount, setHomeworkCount] = useState(0)
   const [requestsCount, setRequestsCount] = useState(0)
+  const { notify_homework } = useTeacherNotificationPreferences(role === 'teacher')
 
   const readyRef = useRef(false)
   const prevHomeworkRef = useRef(0)
@@ -21,8 +24,10 @@ export function useLmsNotifications(role: LmsRole) {
 
   const chimedThisPollRef = useRef(false)
 
-  const maybeSound = useCallback((increased: boolean) => {
-    if (!readyRef.current || !increased || chimedThisPollRef.current) return
+  const homeworkSoundEnabled = role !== 'teacher' || notify_homework
+
+  const maybeSound = useCallback((increased: boolean, enabled = true) => {
+    if (!enabled || !readyRef.current || !increased || chimedThisPollRef.current) return
     if (document.visibilityState !== 'visible') return
     chimedThisPollRef.current = true
     playNotificationSound()
@@ -37,7 +42,7 @@ export function useLmsNotifications(role: LmsRole) {
         homeworkApi.pendingCount()
           .then(res => {
             const next = res.count
-            maybeSound(next > prevHomeworkRef.current)
+            maybeSound(next > prevHomeworkRef.current, homeworkSoundEnabled)
             prevHomeworkRef.current = next
             setHomeworkCount(next)
           })
@@ -86,7 +91,7 @@ export function useLmsNotifications(role: LmsRole) {
 
     await Promise.all(tasks)
     readyRef.current = true
-  }, [role, maybeSound])
+  }, [role, maybeSound, homeworkSoundEnabled])
 
   useEffect(() => {
     unlockNotificationSound()
@@ -99,11 +104,13 @@ export function useLmsNotifications(role: LmsRole) {
     const onRefresh = () => void refresh()
     window.addEventListener('focus', onRefresh)
     window.addEventListener(HOMEWORK_UPDATED_EVENT, onRefresh)
+    window.addEventListener(NOTIFICATION_PREFERENCES_UPDATED_EVENT, onRefresh)
 
     return () => {
       window.clearInterval(interval)
       window.removeEventListener('focus', onRefresh)
       window.removeEventListener(HOMEWORK_UPDATED_EVENT, onRefresh)
+      window.removeEventListener(NOTIFICATION_PREFERENCES_UPDATED_EVENT, onRefresh)
       window.removeEventListener('pointerdown', unlock)
       window.removeEventListener('keydown', unlock)
     }

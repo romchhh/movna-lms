@@ -6,9 +6,10 @@ import { PendingRequestsAlert } from '@/components/lesson-requests/PendingReques
 import { TeacherLessonStatsPanel } from '@/components/teacher/TeacherLessonStatsPanel'
 import { TeacherStudentDetailModal } from '@/components/teacher/TeacherStudentDetailModal'
 import { Badge, Card, Empty, PageHeader, StatCard } from '@/components/shared/UI'
+import { UserAvatar } from '@/components/shared/UserAvatar'
+import { useLmsProfiles } from '@/hooks/useLmsProfiles'
 import { eventDateKey, formatTimeRange } from '@/lib/calendar-utils'
 import { optimateEventToCalendarEvent } from '@/lib/optimate-api'
-import { studentInitials } from '@/lib/optimate-ui'
 import { TeacherEvent, TeacherStudent, teacherOptimateApi, type TeacherLessonStats } from '@/lib/teacher-optimate-api'
 import Link from 'next/link'
 import { useCallback, useEffect, useMemo, useState } from 'react'
@@ -83,6 +84,8 @@ export default function TeacherDashboard() {
     [events],
   )
 
+  useLmsProfiles(students.map(s => s.id))
+
   return (
     <>
       <PageHeader title="Дашборд викладача" sub={formatTodayLabel()}>
@@ -93,7 +96,7 @@ export default function TeacherDashboard() {
       <PendingRequestsAlert href="/teacher/requests" />
       <HomeworkPendingAlert />
 
-      <TeacherLessonStatsPanel stats={lessonStats} loading={loading} />
+      <TeacherLessonStatsPanel stats={lessonStats} loading={loading} prominent />
 
       <div className="g4 dash-stats" style={{ marginTop: 14 }}>
         <StatCard
@@ -136,7 +139,7 @@ export default function TeacherDashboard() {
                 setSelectedTitle(student.full_name)
               }}
             >
-              <div className="admin-teacher-avatar">{studentInitials(student.full_name)}</div>
+              <UserAvatar name={student.full_name} optimateId={student.id} size="lg" kind="student" />
               <div className="teacher-dash-student-body">
                 <div className="admin-table-title">{student.full_name}</div>
                 <div className="admin-table-sub">

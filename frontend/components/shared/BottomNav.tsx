@@ -2,6 +2,7 @@
 
 import { MoreNavIcon, LogoutNavIcon } from '@/components/shared/NavIcons'
 import { NavSectionIcon } from '@/components/shared/NavSectionIcon'
+import { UserAvatar } from '@/components/shared/UserAvatar'
 import type { NavItem, SidebarProps } from '@/components/shared/Sidebar'
 import { clearSession } from '@/lib/auth'
 import { isNavActive, navShortLabel, splitMobileNav } from '@/lib/nav-utils'
@@ -13,6 +14,7 @@ interface BottomNavProps {
   role: SidebarProps['role']
   userName: string
   userInitials: string
+  avatarUrl?: string
   accentColor: string
   accentBg: string
   sections: SidebarProps['sections']
@@ -23,6 +25,7 @@ export default function BottomNav({
   role,
   userName,
   userInitials,
+  avatarUrl = '',
   accentColor,
   accentBg,
   sections,
@@ -70,9 +73,12 @@ export default function BottomNav({
       >
         <div className="bottom-nav-sheet-head">
           <div className="bottom-nav-sheet-user">
-            <div className="avatar" style={{ background: accentBg, color: accentColor }}>
-              {userInitials}
-            </div>
+            <UserAvatar
+              name={userName}
+              avatarUrl={avatarUrl}
+              size="md"
+              kind={role === 'teacher' ? 'teacher' : role === 'student' ? 'student' : 'admin'}
+            />
             <div>
               <div className="bottom-nav-sheet-name">{userName}</div>
               <div className="bottom-nav-sheet-role">{roleLabels[role]}</div>
@@ -159,7 +165,9 @@ function BottomNavTab({ item, active }: { item: NavItem; active: boolean }) {
       <span className="bottom-nav-icon">
         {item.icon}
         {(item.badge ?? 0) > 0 && (
-          <span className="bottom-nav-badge">{item.badge! > 9 ? '9+' : item.badge}</span>
+          <span className={`bottom-nav-badge${item.badgeAttention ? ' bottom-nav-badge--attention' : ''}`}>
+            {item.badge! > 9 ? '9+' : item.badge}
+          </span>
         )}
       </span>
       <span className="bottom-nav-label">{navShortLabel(item.label)}</span>
@@ -184,7 +192,11 @@ function NavSheetLink({
     >
       <span className="bottom-nav-sheet-link-icon">{item.icon}</span>
       <span className="bottom-nav-sheet-link-label">{item.label}</span>
-      {(item.badge ?? 0) > 0 && <span className="nav-badge">{item.badge}</span>}
+      {(item.badge ?? 0) > 0 && (
+        <span className={`nav-badge${item.badgeAttention ? ' nav-badge--attention' : ''}`}>
+          {item.badge}
+        </span>
+      )}
     </Link>
   )
 }

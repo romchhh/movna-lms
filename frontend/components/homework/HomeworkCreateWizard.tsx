@@ -4,7 +4,9 @@ import { HomeworkAssignModal } from '@/components/homework/HomeworkAssignModal'
 import { StatusBadge } from '@/components/shared/StatusBadge'
 import { Badge, Empty } from '@/components/shared/UI'
 import { AppModalHeader } from '@/components/shared/AppModalHeader'
+import { UserAvatar } from '@/components/shared/UserAvatar'
 import { useDebouncedValue } from '@/hooks/useDebouncedValue'
+import { useLmsProfiles } from '@/hooks/useLmsProfiles'
 import type { CalendarEvent } from '@/lib/calendar-types'
 import { formatEventDateFull, formatTimeRange } from '@/lib/calendar-utils'
 import {
@@ -15,7 +17,6 @@ import {
 } from '@/lib/homework-api'
 import { homeworkStatusMeta } from '@/lib/status-ui'
 import { optimateEventToCalendarEvent } from '@/lib/optimate-api'
-import { studentInitials } from '@/lib/optimate-ui'
 import { teacherOptimateApi, type TeacherStudent } from '@/lib/teacher-optimate-api'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 
@@ -124,6 +125,8 @@ export function HomeworkCreateWizard({ onClose, onSaved }: HomeworkCreateWizardP
     onClose()
   }
 
+  useLmsProfiles(students.map(s => s.id))
+
   if (selectedEvent && selectedStudent) {
     return (
       <HomeworkAssignModal
@@ -171,7 +174,7 @@ export function HomeworkCreateWizard({ onClose, onSaved }: HomeworkCreateWizardP
                     className="hw-wizard-pick"
                     onClick={() => pickStudent(student)}
                   >
-                    <span className="admin-teacher-avatar">{studentInitials(student.full_name)}</span>
+                    <UserAvatar name={student.full_name} optimateId={student.id} size="md" kind="student" />
                     <span className="hw-wizard-pick-body">
                       <span className="admin-table-title">{student.full_name}</span>
                       <span className="admin-table-sub">

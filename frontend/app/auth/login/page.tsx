@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import {
   decodePayload,
   ensureValidSession,
@@ -195,6 +196,16 @@ function LoginForm() {
           </a>{' '}
           у Telegram
         </p>
+
+        <nav className="login-legal" aria-label="Правові документи">
+          <Link href="/privacy" className="login-legal-link">
+            Політика конфіденційності
+          </Link>
+          <span className="login-legal-sep" aria-hidden>·</span>
+          <Link href="/terms" className="login-legal-link">
+            Умови використання
+          </Link>
+        </nav>
       </div>
     </div>
   )
