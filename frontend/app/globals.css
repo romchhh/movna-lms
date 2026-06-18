@@ -1246,30 +1246,6 @@ body.more-open {
   border-radius: 999px;
 }
 
-.welcome-greeting {
-  margin: 0;
-  padding-bottom: 18px;
-  border-bottom: 1px solid color-mix(in srgb, var(--bd) 85%, transparent);
-}
-
-.welcome-greeting-line {
-  margin: 0;
-  font-size: clamp(2rem, 5.5vw, 2.75rem);
-  font-weight: 700;
-  letter-spacing: -0.04em;
-  line-height: 1.08;
-}
-
-.welcome-greeting-label {
-  color: var(--tx);
-  font-weight: 600;
-}
-
-.welcome-greeting-name {
-  color: var(--nav-fg, #0E4486);
-  font-weight: 800;
-}
-
 /* Page header */
 .page-header {
   display: flex;
@@ -2078,14 +2054,6 @@ body.more-open {
     padding: 16px 16px calc(24px + var(--bottom-nav-h) + env(safe-area-inset-bottom, 0));
     gap: 18px;
     overscroll-behavior: contain;
-  }
-
-  .welcome-greeting {
-    padding-bottom: 14px;
-  }
-
-  .welcome-greeting-line {
-    font-size: clamp(1.75rem, 8vw, 2.25rem);
   }
 
   .dash-hero {

@@ -2,14 +2,11 @@
 
 import { homeForRole } from '@/lib/auth'
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
 import { useCallback, useEffect, useState } from 'react'
 import BottomNav from './BottomNav'
 import Sidebar, { type SidebarProps } from './Sidebar'
-import { WelcomeGreeting } from './WelcomeGreeting'
 
 const SIDEBAR_COLLAPSED_KEY = 'movna-sidebar-collapsed'
-const DASHBOARD_PATHS = new Set(['/student', '/teacher', '/admin'])
 
 interface AppShellProps {
   children: React.ReactNode
@@ -18,10 +15,8 @@ interface AppShellProps {
 
 export default function AppShell({ children, sidebar }: AppShellProps) {
   const { mobileTabHrefs, ...sidebarProps } = sidebar
-  const pathname = usePathname()
   const [collapsed, setCollapsed] = useState(false)
   const [hydrated, setHydrated] = useState(false)
-  const isDashboardHome = DASHBOARD_PATHS.has(pathname)
 
   useEffect(() => {
     document.body.classList.add('app-shell-active')
@@ -74,7 +69,6 @@ export default function AppShell({ children, sidebar }: AppShellProps) {
         </header>
 
         <main className="main-content">
-          {!isDashboardHome && <WelcomeGreeting name={sidebarProps.userName} />}
           {children}
         </main>
       </div>
