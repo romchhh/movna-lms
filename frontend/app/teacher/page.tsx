@@ -5,7 +5,8 @@ import { HomeworkPendingAlert } from '@/components/homework/HomeworkPendingAlert
 import { PendingRequestsAlert } from '@/components/lesson-requests/PendingRequestsAlert'
 import { TeacherLessonStatsPanel } from '@/components/teacher/TeacherLessonStatsPanel'
 import { TeacherStudentDetailModal } from '@/components/teacher/TeacherStudentDetailModal'
-import { Badge, Card, Empty, PageHeader, StatCard } from '@/components/shared/UI'
+import { DashboardHero } from '@/components/shared/DashboardHero'
+import { Badge, Card, Empty, StatCard } from '@/components/shared/UI'
 import { UserAvatar } from '@/components/shared/UserAvatar'
 import { useLmsProfiles } from '@/hooks/useLmsProfiles'
 import { eventDateKey, formatTimeRange } from '@/lib/calendar-utils'
@@ -13,17 +14,6 @@ import { optimateEventToCalendarEvent } from '@/lib/optimate-api'
 import { TeacherEvent, TeacherStudent, teacherOptimateApi, type TeacherLessonStats } from '@/lib/teacher-optimate-api'
 import Link from 'next/link'
 import { useCallback, useEffect, useMemo, useState } from 'react'
-
-const UK_DAY_LONG = ['Неділя', 'Понеділок', 'Вівторок', 'Середа', 'Четвер', "П'ятниця", 'Субота']
-const UK_MONTH = [
-  'січня', 'лютого', 'березня', 'квітня', 'травня', 'червня',
-  'липня', 'серпня', 'вересня', 'жовтня', 'листопада', 'грудня',
-]
-
-function formatTodayLabel() {
-  const now = new Date()
-  return `${UK_DAY_LONG[now.getDay()]}, ${now.getDate()} ${UK_MONTH[now.getMonth()]} ${now.getFullYear()}`
-}
 
 function isToday(iso: string) {
   return eventDateKey(iso) === eventDateKey(new Date().toISOString())
@@ -87,10 +77,17 @@ export default function TeacherDashboard() {
   useLmsProfiles(students.map(s => s.id))
 
   return (
-    <>
-      <PageHeader title="Дашборд викладача" sub={formatTodayLabel()}>
-        <Link href="/teacher/schedule" className="btn btn-teal btn-sm">Розклад</Link>
-      </PageHeader>
+    <div className="dash-home">
+      <DashboardHero
+        role="teacher"
+        fallbackName="Марія Іваненко"
+        subtitle={loading ? 'Завантаження…' : 'Ваш день, учні та найближчі уроки'}
+        actions={
+          <Link href="/teacher/schedule" className="btn btn-sm dash-hero-btn">
+            Розклад
+          </Link>
+        }
+      />
 
       {error && <div className="alert">{error}</div>}
       <PendingRequestsAlert href="/teacher/requests" />
@@ -206,6 +203,6 @@ export default function TeacherDashboard() {
         title={selectedTitle}
         onClose={() => setSelectedId(null)}
       />
-    </>
+    </div>
   )
 }

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { PwaInstallCard } from '@/components/pwa/PwaInstallCard'
 import { OptimateProfileCard } from '@/components/settings/OptimateProfileCard'
 import { PageHeader, Card, Toggle } from '@/components/shared/UI'
 
@@ -12,6 +13,7 @@ export default function StudentSettings() {
   return (
     <>
       <PageHeader title="Налаштування" />
+      <PwaInstallCard />
       <div className="g2">
         <OptimateProfileCard role="student" />
 

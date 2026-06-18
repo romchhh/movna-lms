@@ -4,7 +4,8 @@ import { EventsCalendar } from '@/components/calendar/EventsCalendar'
 import { StudentCurriculumSummary } from '@/components/curriculum/StudentCurriculumSummary'
 import { HomeworkAlert } from '@/components/homework/HomeworkAlert'
 import { HomeworkStudentModal } from '@/components/homework/HomeworkStudentModal'
-import { Badge, PageHeader, ProgressBar, StatCard } from '@/components/shared/UI'
+import { DashboardHero } from '@/components/shared/DashboardHero'
+import { Badge, ProgressBar, StatCard } from '@/components/shared/UI'
 import { formatTimeRange } from '@/lib/calendar-utils'
 import type { CalendarEvent } from '@/lib/calendar-types'
 import {
@@ -50,10 +51,11 @@ export default function StudentDashboard() {
   const totalRemaining = overview?.total_lessons_remaining ?? 0
 
   return (
-    <>
-      <PageHeader
-        title="Дашборд"
-        sub={loading ? 'Завантаження даних з Optimate...' : 'Ваші баланси та найближчі заняття'}
+    <div className="dash-home">
+      <DashboardHero
+        role="student"
+        fallbackName="Олена Коваль"
+        subtitle={loading ? 'Завантаження даних…' : 'Ваші баланси та найближчі заняття'}
       />
 
       <HomeworkAlert onOpen={id => setHwModalId(id)} />
@@ -205,6 +207,6 @@ export default function StudentDashboard() {
         onClose={() => setHwModalId(null)}
         onUpdated={() => {}}
       />
-    </>
+    </div>
   )
 }

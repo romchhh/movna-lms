@@ -4,7 +4,8 @@ import { AdminDashboardInsights } from '@/components/admin/AdminDashboardInsight
 import { AdminEventsCalendar } from '@/components/admin/AdminEventsCalendar'
 import { AdminOptimateSyncBar } from '@/components/admin/AdminOptimateSyncBar'
 import { PendingRequestsAlert } from '@/components/lesson-requests/PendingRequestsAlert'
-import { Badge, Card, Empty, PageHeader } from '@/components/shared/UI'
+import { DashboardHero } from '@/components/shared/DashboardHero'
+import { Badge, Card, Empty } from '@/components/shared/UI'
 import { AdminOverview, adminOptimateApi } from '@/lib/admin-optimate-api'
 import Link from 'next/link'
 import { useCallback, useEffect, useState } from 'react'
@@ -34,13 +35,13 @@ export default function AdminDashboard() {
   const lowBalance = overview?.low_balance_students ?? []
 
   return (
-    <>
-      <PageHeader
-        title="Адмін-панель"
-        sub={loading ? 'Завантаження з Optimate...' : `Огляд школи · ${overview?.month_label ?? ''}`}
-      >
-        <AdminOptimateSyncBar cache={overview?.cache ?? null} onRefreshed={load} />
-      </PageHeader>
+    <div className="dash-home">
+      <DashboardHero
+        role="admin"
+        fallbackName="Адміністратор"
+        subtitle={loading ? 'Завантаження з Optimate…' : `Огляд школи · ${overview?.month_label ?? ''}`}
+        actions={<AdminOptimateSyncBar cache={overview?.cache ?? null} onRefreshed={load} />}
+      />
 
       {error && <div className="alert">{error}</div>}
       <PendingRequestsAlert href="/admin/requests" />
@@ -94,6 +95,6 @@ export default function AdminDashboard() {
           </div>
         )}
       </Card>
-    </>
+    </div>
   )
 }

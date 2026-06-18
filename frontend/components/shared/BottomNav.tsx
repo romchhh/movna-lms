@@ -1,5 +1,6 @@
 'use client'
 
+import { PwaInstallButton } from '@/components/pwa/PwaInstallButton'
 import { MoreNavIcon, LogoutNavIcon } from '@/components/shared/NavIcons'
 import { NavSectionIcon } from '@/components/shared/NavSectionIcon'
 import { UserAvatar } from '@/components/shared/UserAvatar'
@@ -120,6 +121,7 @@ export default function BottomNav({
           })}
         </div>
 
+        <PwaInstallButton variant="sheet" />
         <button type="button" className="bottom-nav-sheet-logout" onClick={logout}>
           <LogoutNavIcon />
           <span>Вийти з акаунту</span>

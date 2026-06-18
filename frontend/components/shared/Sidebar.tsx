@@ -4,6 +4,7 @@ import { clearSession, homeForRole } from '@/lib/auth'
 import { isNavActive } from '@/lib/nav-utils'
 import { UserAvatar } from '@/components/shared/UserAvatar'
 import { SidebarCollapseIcon } from '@/components/shared/SidebarCollapseIcon'
+import { PwaInstallButton } from '@/components/pwa/PwaInstallButton'
 import { LogoutNavIcon } from '@/components/shared/NavIcons'
 import { NavSectionIcon } from '@/components/shared/NavSectionIcon'
 import Link from 'next/link'
@@ -171,6 +172,7 @@ export default function Sidebar({
               <div className="sidebar-user-role">{roleLabels[role]}</div>
             </div>
           </div>
+          <PwaInstallButton variant="sidebar" />
           <button type="button" className="sidebar-logout-btn" onClick={logout}>
             <LogoutNavIcon />
             <span>Вийти</span>

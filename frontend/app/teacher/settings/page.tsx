@@ -1,5 +1,6 @@
 'use client'
 
+import { PwaInstallCard } from '@/components/pwa/PwaInstallCard'
 import { OptimateProfileCard } from '@/components/settings/OptimateProfileCard'
 import { TeacherMeetingLinksCard } from '@/components/settings/TeacherMeetingLinksCard'
 import { TeacherNotificationSettingsCard } from '@/components/settings/TeacherNotificationSettingsCard'
@@ -9,6 +10,7 @@ export default function TeacherSettings() {
   return (
     <>
       <PageHeader title="Налаштування" />
+      <PwaInstallCard />
 
       <div className="g2">
         <OptimateProfileCard role="teacher" />
