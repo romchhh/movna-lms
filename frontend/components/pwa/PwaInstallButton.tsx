@@ -18,38 +18,50 @@ interface PwaInstallButtonProps {
   className?: string
 }
 
+function installLabel(hasNativePrompt: boolean, canShareInstall: boolean) {
+  if (hasNativePrompt) return 'Встановити зараз'
+  if (canShareInstall) return 'Встановити додаток'
+  return 'Додати додаток на робочий стіл'
+}
+
 export function PwaInstallButton({ variant = 'inline', className = '' }: PwaInstallButtonProps) {
-  const { isInstalled, platform, hasNativePrompt, showInstallUI, install } = usePwaInstall()
+  const { platform, hasNativePrompt, canShareInstall, showInstallUI, install } = usePwaInstall()
   const [hintOpen, setHintOpen] = useState(false)
+  const [shareNote, setShareNote] = useState(false)
 
   if (!showInstallUI) return null
 
   async function handleClick() {
-    if (hasNativePrompt) {
-      const accepted = await install()
-      if (!accepted) setHintOpen(true)
+    setShareNote(false)
+    const result = await install()
+    if (result === 'installed') return
+    if (result === 'shared') {
+      setShareNote(true)
       return
     }
-    setHintOpen(open => !open)
+    setHintOpen(true)
   }
 
-  const showHintInline = platform === 'ios' && variant === 'inline'
-
-  if (showHintInline) {
-    return <PwaInstallHint platform={platform} />
-  }
+  const oneClick = hasNativePrompt || canShareInstall
 
   return (
     <div className={`pwa-install-wrap pwa-install-wrap--${variant} ${className}`.trim()}>
       <button
         type="button"
-        className={`pwa-install-btn pwa-install-btn--${variant}`}
+        className={`pwa-install-btn pwa-install-btn--${variant}${oneClick ? ' pwa-install-btn--primary' : ''}`}
         onClick={() => void handleClick()}
-        aria-expanded={hintOpen}
+        aria-expanded={hintOpen || shareNote}
       >
         <InstallAppIcon />
-        <span>Додати додаток на робочий стіл</span>
+        <span>{installLabel(hasNativePrompt, canShareInstall)}</span>
       </button>
+      {shareNote && (
+        <p className="pwa-install-share-note">
+          {platform === 'ios'
+            ? 'Оберіть «На екран «Додому»» у меню «Поділитися».'
+            : 'Оберіть «Додати на Dock» у меню «Поділитися».'}
+        </p>
+      )}
       {hintOpen && <PwaInstallHint platform={platform} />}
     </div>
   )

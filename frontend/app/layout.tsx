@@ -1,5 +1,6 @@
 import './globals.css'
 import { AuthSessionBoot } from '@/components/auth/AuthSessionBoot'
+import { PwaInstallProvider } from '@/components/pwa/PwaInstallProvider'
 import { PwaRegister } from '@/components/pwa/PwaRegister'
 import type { Metadata, Viewport } from 'next'
 
@@ -33,9 +34,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="uk">
       <body>
-        <AuthSessionBoot />
-        <PwaRegister />
-        {children}
+        <PwaInstallProvider>
+          <AuthSessionBoot />
+          <PwaRegister />
+          {children}
+        </PwaInstallProvider>
       </body>
     </html>
   )

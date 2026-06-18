@@ -1,10 +1,12 @@
 {
+  "id": "/",
   "name": "MOVNA LMS",
   "short_name": "MOVNA",
   "description": "Навчальна платформа школи MOVNA",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
+  "display_override": ["standalone", "browser"],
   "orientation": "portrait-primary",
   "background_color": "#F5F7FA",
   "theme_color": "#0E4486",

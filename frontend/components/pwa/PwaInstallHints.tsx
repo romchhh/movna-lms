@@ -7,10 +7,9 @@ export function PwaInstallHint({ platform }: { platform: PwaInstallPlatform }) {
     return (
       <div className="pwa-install-hint">
         <p className="pwa-install-hint-title">iPhone / iPad</p>
-        <ol className="pwa-install-hint-steps">
-          <li>Натисніть «Поділитися» у Safari</li>
-          <li>Оберіть «На екран «Додому»»</li>
-        </ol>
+        <p className="pwa-install-hint-note">
+          Натисніть «Встановити додаток» — відкриється «Поділитися», потім оберіть «На екран «Додому»».
+        </p>
       </div>
     )
   }
@@ -18,11 +17,10 @@ export function PwaInstallHint({ platform }: { platform: PwaInstallPlatform }) {
   if (platform === 'desktop-chromium') {
     return (
       <div className="pwa-install-hint">
-        <p className="pwa-install-hint-title">Chrome / Edge на комп&apos;ютері</p>
-        <ol className="pwa-install-hint-steps">
-          <li>Натисніть значок «Встановити» (⊕) праворуч у адресному рядку</li>
-          <li>Або меню браузера → «Встановити MOVNA» / «Install MOVNA LMS»</li>
-        </ol>
+        <p className="pwa-install-hint-title">Chrome / Edge</p>
+        <p className="pwa-install-hint-note">
+          Якщо кнопка «Встановити зараз» не з&apos;явилась, натисніть ⊕ у адресному рядку або меню браузера → «Встановити MOVNA».
+        </p>
       </div>
     )
   }
@@ -31,10 +29,9 @@ export function PwaInstallHint({ platform }: { platform: PwaInstallPlatform }) {
     return (
       <div className="pwa-install-hint">
         <p className="pwa-install-hint-title">Safari на Mac</p>
-        <ol className="pwa-install-hint-steps">
-          <li>Меню «Файл» → «Додати на Dock»</li>
-          <li>Або кнопка «Поділитися» → «Додати на Dock»</li>
-        </ol>
+        <p className="pwa-install-hint-note">
+          Натисніть «Встановити додаток» — у «Поділитися» оберіть «Додати на Dock». Або меню «Файл» → «Додати на Dock».
+        </p>
       </div>
     )
   }
@@ -43,7 +40,7 @@ export function PwaInstallHint({ platform }: { platform: PwaInstallPlatform }) {
     <div className="pwa-install-hint">
       <p className="pwa-install-hint-title">Інший браузер</p>
       <p className="pwa-install-hint-note">
-        Спробуйте Chrome, Edge або Safari — там доступне встановлення як додаток.
+        Відкрийте сайт у Chrome, Edge або Safari — там доступне встановлення одним натисканням.
       </p>
     </div>
   )

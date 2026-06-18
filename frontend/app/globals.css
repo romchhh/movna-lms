@@ -518,6 +518,34 @@ body.more-open {
   background: color-mix(in srgb, var(--nav-fg, #0E4486) 16%, var(--bg));
 }
 
+.pwa-install-btn--primary {
+  background: var(--nav-fg, #0E4486);
+  border-color: var(--nav-fg, #0E4486);
+  color: #fff;
+}
+
+.pwa-install-btn--primary:hover {
+  background: color-mix(in srgb, var(--nav-fg, #0E4486) 88%, #000);
+  color: #fff;
+}
+
+.pwa-install-btn--sheet.pwa-install-btn--primary {
+  background: var(--nav-fg, #0E4486);
+  border-color: var(--nav-fg, #0E4486);
+  color: #fff;
+}
+
+.pwa-install-share-note {
+  margin: 8px 0 0;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--tx2);
+}
+
+.pwa-install-wrap--sheet .pwa-install-share-note {
+  margin: 0 12px 8px;
+}
+
 .pwa-install-btn:focus-visible {
   outline: 2px solid color-mix(in srgb, var(--nav-fg, #0E4486) 35%, transparent);
   outline-offset: 1px;

@@ -12,7 +12,7 @@ export function PwaInstallCard() {
   return (
     <Card title="Додаток на робочому столі" className="pwa-install-card">
       <p className="pwa-install-card-text">
-        Швидкий доступ з телефону або комп&apos;ютера — без адресного рядка браузера.
+        Натисніть кнопку — відкриється встановлення (Chrome/Edge) або меню «Поділитися» (iPhone, Safari).
       </p>
       <PwaInstallButton variant="inline" />
     </Card>
