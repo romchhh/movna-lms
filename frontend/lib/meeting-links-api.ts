@@ -94,6 +94,23 @@ export function dismissLessonAlert(eventId: string, phase: string): void {
   localStorage.setItem(lessonAlertDismissKey(eventId, phase), '1')
 }
 
+const MEETING_LINKS_SETUP_ALERT_DISMISS_KEY = 'movna-meeting-links-setup-alert-dismiss'
+
+export function isMeetingLinksSetupAlertDismissed(): boolean {
+  if (typeof window === 'undefined') return false
+  return localStorage.getItem(MEETING_LINKS_SETUP_ALERT_DISMISS_KEY) === '1'
+}
+
+export function dismissMeetingLinksSetupAlert(): void {
+  if (typeof window === 'undefined') return
+  localStorage.setItem(MEETING_LINKS_SETUP_ALERT_DISMISS_KEY, '1')
+}
+
+export function clearMeetingLinksSetupAlertDismiss(): void {
+  if (typeof window === 'undefined') return
+  localStorage.removeItem(MEETING_LINKS_SETUP_ALERT_DISMISS_KEY)
+}
+
 export function lessonAlertPhaseLabel(phase: string): string {
   if (phase === 'active') return 'Зараз'
   if (phase === '15') return 'Через 15 хв'

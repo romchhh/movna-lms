@@ -14,6 +14,7 @@ from app.routers import (
     faq,
     lesson_requests,
     student_curriculum,
+    student_learning_resources,
     student_lesson_alert,
     student_optimate,
     teacher_curriculum,
@@ -21,6 +22,7 @@ from app.routers import (
     teacher_optimate,
     teacher_settings,
     teacher_student_curriculum,
+    teacher_student_links,
     user_profile,
 )
 
@@ -55,7 +57,9 @@ app.include_router(admin_faq.router, prefix="/api/admin/faq", tags=["admin-faq"]
 app.include_router(faq.router, prefix="/api/faq", tags=["faq"])
 app.include_router(teacher_curriculum.router, prefix="/api/teacher/curricula", tags=["teacher-curricula"])
 app.include_router(teacher_student_curriculum.router, prefix="/api/teacher/student-curricula", tags=["teacher-student-curricula"])
+app.include_router(teacher_student_links.router, prefix="/api/teacher/student-links", tags=["teacher-student-links"])
 app.include_router(student_curriculum.router, prefix="/api/student/curriculum", tags=["student-curriculum"])
+app.include_router(student_learning_resources.router, prefix="/api/student", tags=["student-learning-resources"])
 app.include_router(student_lesson_alert.router, prefix="/api/student", tags=["student-lesson-alert"])
 app.include_router(teacher_lesson_alert.router, prefix="/api/teacher", tags=["teacher-lesson-alert"])
 app.include_router(teacher_settings.router, prefix="/api/teacher/settings", tags=["teacher-settings"])

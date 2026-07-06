@@ -65,6 +65,9 @@ interface EventsCalendarProps {
   onOpenHomework?: (submissionId: number) => void
   /** Легенда: індивідуальний / груповий / … */
   showFormatLegend?: boolean
+  /** Викладач: прямe скасування уроку в Optimate */
+  enableTeacherCancel?: boolean
+  onTeacherCancel?: (event: CalendarEvent) => void
 }
 
 function statusBadge(variant?: CalendarEvent['status_variant']) {
@@ -503,6 +506,8 @@ export function EventsCalendar({
   curriculumAudience = 'student',
   onOpenHomework,
   showFormatLegend = !embed,
+  enableTeacherCancel = false,
+  onTeacherCancel,
 }: EventsCalendarProps) {
   const today = startOfDay(new Date())
   const [view, setView] = useState<CalendarViewMode>(defaultView)
@@ -728,6 +733,11 @@ export function EventsCalendar({
         enableCurriculumTopic={enableCurriculumTopic}
         curriculumAudience={curriculumAudience}
         onOpenHomework={onOpenHomework}
+        enableTeacherCancel={enableTeacherCancel}
+        onTeacherCancel={ev => {
+          setDetailEvent(null)
+          onTeacherCancel?.(ev)
+        }}
       />
 
       {entityLinks === 'teacher' && entityKind === 'student' && (

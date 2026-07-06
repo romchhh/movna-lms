@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.user import User, UserRole
 from app.schemas.teacher_settings import LessonAlertOut, MeetingLinksOut
 from app.services.optimate_cache import get_cached_events, get_cached_teacher_events
+from app.services.teacher_student_links import resolve_lesson_links_for_student_teacher
 
 
 def _parse_iso(value: str) -> datetime | None:
@@ -155,6 +156,13 @@ async def get_student_lesson_alert(
         teacher_name_from_event = teacher_names[0] or teacher_name_from_event
 
     zoom_url, miro_url, teacher_db_name = await _teacher_links(db, teacher_id)
+    lesson_url, board_url = await resolve_lesson_links_for_student_teacher(
+        db,
+        teacher_id,
+        student_optimate_id,
+        fallback_zoom=zoom_url,
+        fallback_miro=miro_url,
+    )
     teacher_name = teacher_db_name or teacher_name_from_event
 
     return LessonAlertOut(
@@ -166,8 +174,8 @@ async def get_student_lesson_alert(
         teacher_name=teacher_name,
         teacher_id=teacher_id,
         product_name=getattr(event, "product_name", "") or getattr(event, "schedule_class", "") or "",
-        zoom_url=zoom_url,
-        miro_url=miro_url,
+        zoom_url=lesson_url,
+        miro_url=board_url,
         message=_student_alert_message(phase, getattr(event, "product_name", "") or "", teacher_name),
     )
 

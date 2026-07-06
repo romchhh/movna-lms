@@ -97,6 +97,16 @@ export function ChevronRightIcon(props: SVGProps<SVGSVGElement>) {
   )
 }
 
+export function MoreIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden {...props}>
+      <circle cx="5" cy="12" r="1.75" fill="currentColor" stroke="none" />
+      <circle cx="12" cy="12" r="1.75" fill="currentColor" stroke="none" />
+      <circle cx="19" cy="12" r="1.75" fill="currentColor" stroke="none" />
+    </svg>
+  )
+}
+
 type IconButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
   label: string
   size?: 'sm' | 'md'

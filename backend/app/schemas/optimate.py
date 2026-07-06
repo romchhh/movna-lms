@@ -62,6 +62,8 @@ class EventOut(BaseModel):
     student_ids: list[str] = []
     teacher_names: list[str] = []
     teacher_ids: list[str] = []
+    cancellation_reason: Optional[str] = None
+    cancellation_note: Optional[str] = None
 
 
 class ScheduleSlotOut(BaseModel):
@@ -105,9 +107,83 @@ class TeacherStudentOut(BaseModel):
     phone: Optional[str] = None
     skill_level_label: Optional[str] = None
     remaining_lessons: float = 0
+    lessons_total: float = 0
+    lessons_used: float = 0
+    is_speaking_club_only: bool = False
     planned_lessons: float = 0
     completed_lessons: float = 0
     product_names: list[str] = []
+    products: list[dict] = []
+
+
+class TeacherTransactionOut(BaseModel):
+    id: str
+    type: int
+    type_label: str
+    amount: float
+    signed_amount: float
+    description: Optional[str] = None
+    transaction_date: Optional[str] = None
+    created_at: Optional[str] = None
+    product_id: Optional[str] = None
+    product_name: Optional[str] = None
+    product_type: Optional[int] = None
+    lesson_id: Optional[str] = None
+    is_trial: Optional[bool] = None
+    period_start_date: Optional[str] = None
+    period_end_date: Optional[str] = None
+    salary_invoice_id: Optional[str] = None
+    student_names: list[str] = []
+    is_credit: bool
+
+
+class TeacherTransactionsSummaryOut(BaseModel):
+    earned_total: float = 0
+    payout_total: float = 0
+    lesson_accrual_count: int = 0
+    payout_count: int = 0
+    date_from: Optional[str] = None
+    date_to: Optional[str] = None
+
+
+class PaginatedTeacherTransactionsOut(BaseModel):
+    data: list[TeacherTransactionOut]
+    total: int
+    page: int
+    page_size: int
+    summary: TeacherTransactionsSummaryOut
+    cache: CacheMeta
+
+
+class LessonCancellationReasonOut(BaseModel):
+    code: str
+    label: str
+
+
+class TeacherEventCreateIn(BaseModel):
+    student_id: str
+    product_id: Optional[str] = None
+    starts_at: str
+    duration: int = 60
+
+
+class TeacherEventCancelIn(BaseModel):
+    reason_code: str
+    note: str = ""
+
+
+class TeacherEventActionOut(BaseModel):
+    ok: bool
+    event_id: str
+    message: str = ""
+
+
+class EventCancellationOut(BaseModel):
+    optimate_event_id: str
+    reason_code: str
+    reason_label: str
+    note: str = ""
+    created_at: Optional[str] = None
 
 
 class PaginatedTeacherStudentsOut(BaseModel):
@@ -170,6 +246,8 @@ class StudentOverviewOut(BaseModel):
     upcoming_events: list[EventOut]
     recent_transactions: list[TransactionOut]
     total_lessons_remaining: float
+    total_lessons_purchased: float = 0
+    total_lessons_used: float = 0
     synced_at: datetime
     cache: CacheMeta
 
@@ -231,6 +309,9 @@ class LessonFormatBreakdown(BaseModel):
 
 class TeacherLessonStatsOut(BaseModel):
     month_label: str
+    stats_year: int
+    stats_month: int
+    is_current_month: bool = True
     days_back: int
     days_forward: int
     completed_in_period: int
@@ -246,8 +327,12 @@ class TeacherLessonStatsOut(BaseModel):
     month_change_pct: int
     week_activity: list[TeacherLessonStatsDayActivity]
     unique_students_month: int = 0
+    unique_students_speaking_club_month: int = 0
     trial_lessons_month: int = 0
     format_breakdown_month: LessonFormatBreakdown = LessonFormatBreakdown()
     busiest_weekday_label: str = "—"
     avg_lessons_per_week: float = 0
+    total_students: int = 0
+    students_speaking_club_only: int = 0
+    students_with_regular_lessons: int = 0
     cache: CacheMeta

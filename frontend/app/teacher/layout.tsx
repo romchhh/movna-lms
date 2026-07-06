@@ -1,5 +1,6 @@
 import { TeacherLayoutShell } from '@/components/shared/TeacherLayoutShell'
 import {
+  BalanceNavIcon,
   CalendarNavIcon,
   CurriculaNavIcon,
   DashNavIcon,
@@ -20,6 +21,7 @@ const sections = [
       { href: '/teacher/groups', label: 'Мої групи', icon: <GroupsNavIcon /> },
       { href: '/teacher/homework', label: 'Домашні завдання', icon: <HomeworkNavIcon /> },
       { href: '/teacher/schedule', label: 'Розклад', icon: <CalendarNavIcon /> },
+      { href: '/teacher/salaries', label: 'Зарплата', icon: <BalanceNavIcon /> },
       { href: '/teacher/requests', label: 'Запити', icon: <RequestsNavIcon /> },
     ],
   },
@@ -54,8 +56,8 @@ export default function TeacherLayout({ children }: { children: React.ReactNode 
         mobileTabHrefs: [
           '/teacher',
           '/teacher/students',
-          '/teacher/homework',
           '/teacher/schedule',
+          '/teacher/salaries',
         ],
       }}
     >

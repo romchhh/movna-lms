@@ -22,6 +22,21 @@ TRANSACTION_TYPE_LABELS: dict[int, str] = {
 TRANSACTION_CREDIT_TYPES = {1, 2, 3, 6, 8}
 TRANSACTION_DEBIT_TYPES = {4, 5, 7}
 
+TEACHER_TRANSACTION_TYPE_LABELS: dict[int, str] = {
+    1: "Нарахування за урок",
+    2: "Виплата / інвойс",
+}
+
+LESSON_CANCELLATION_REASONS: list[dict[str, str]] = [
+    {"code": "student_illness", "label": "Хвороба учня"},
+    {"code": "teacher_illness", "label": "Хвороба викладача"},
+    {"code": "student_request", "label": "Запит учня"},
+    {"code": "teacher_request", "label": "Запит викладача"},
+    {"code": "schedule_conflict", "label": "Конфлікт розкладу"},
+    {"code": "technical", "label": "Технічні причини"},
+    {"code": "other", "label": "Інше"},
+]
+
 EVENT_TYPE_LABELS: dict[int, str] = {
     1: "Урок",
 }

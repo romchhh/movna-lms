@@ -20,9 +20,10 @@ class Base(DeclarativeBase):
 async def init_db():
     async with engine.begin() as conn:
         # Import all models so Base knows about them
-        from app.models import user, lesson_request, event_homework, teacher_curriculum, student_curriculum, faq  # noqa
+        from app.models import user, lesson_request, event_homework, teacher_curriculum, student_curriculum, faq, teacher_student_link, teacher_event_cancellation  # noqa
         await conn.run_sync(Base.metadata.create_all)
         await conn.run_sync(_ensure_user_columns)
+        await conn.run_sync(_ensure_teacher_curriculum_columns)
 
 
 def _ensure_user_columns(connection):
@@ -56,6 +57,26 @@ def _ensure_user_columns(connection):
         connection.execute(
             text("ALTER TABLE users ADD COLUMN about_me TEXT DEFAULT ''")
         )
+
+
+def _ensure_teacher_curriculum_columns(connection):
+    if "sqlite" not in settings.DATABASE_URL:
+        return
+    from sqlalchemy import text
+
+    rows = connection.execute(text("PRAGMA table_info(teacher_curricula)")).fetchall()
+    if not rows:
+        return
+    columns = {row[1] for row in rows}
+    patches = {
+        "source_movna_slug": "VARCHAR(120)",
+        "source_movna_sheet_id": "INTEGER",
+        "source_movna_name": "VARCHAR(255)",
+        "forked_from_curriculum_id": "INTEGER",
+    }
+    for name, col_type in patches.items():
+        if name not in columns:
+            connection.execute(text(f"ALTER TABLE teacher_curricula ADD COLUMN {name} {col_type}"))
 
 
 async def get_db():

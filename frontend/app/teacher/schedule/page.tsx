@@ -2,13 +2,18 @@
 
 import { EventsCalendar } from '@/components/calendar/EventsCalendar'
 import { TeacherAvailabilityCalendar } from '@/components/calendar/TeacherAvailabilityCalendar'
+import {
+  ScheduleLessonPanel,
+  TeacherCancelLessonDialog,
+} from '@/components/teacher/ScheduleLessonPanel'
 import { Card, Empty, PageHeader } from '@/components/shared/UI'
 import {
   type TeacherEvent,
   type TeacherSchedule,
   teacherOptimateApi,
 } from '@/lib/teacher-optimate-api'
-import { optimateEventToCalendarEvent } from '@/lib/optimate-api'
+import { mapOptimateEventToCalendar } from '@/lib/calendar-types'
+import type { CalendarEvent } from '@/lib/calendar-types'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 
 export default function TeacherSchedulePage() {
@@ -16,14 +21,16 @@ export default function TeacherSchedulePage() {
   const [events, setEvents] = useState<TeacherEvent[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [createOpen, setCreateOpen] = useState(false)
+  const [cancelEvent, setCancelEvent] = useState<CalendarEvent | null>(null)
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (refresh = false) => {
     setLoading(true)
     setError('')
     try {
       const [schedulesRes, eventsRes] = await Promise.all([
-        teacherOptimateApi.schedules(),
-        teacherOptimateApi.events(7, 45),
+        teacherOptimateApi.schedules(undefined, refresh),
+        teacherOptimateApi.events(30, 60, refresh),
       ])
       setSchedule(schedulesRes.data[0] ?? null)
       setEvents(eventsRes.data)
@@ -39,20 +46,66 @@ export default function TeacherSchedulePage() {
   }, [load])
 
   const calendarEvents = useMemo(
-    () => events.map(optimateEventToCalendarEvent),
+    () => events.map(mapOptimateEventToCalendar),
     [events],
   )
+
+  const plannedCount = useMemo(
+    () => events.filter(e => e.completion_label === 'Заплановано').length,
+    [events],
+  )
+
+  async function handleCancelConfirm(reasonCode: string, note: string) {
+    if (!cancelEvent) return
+    await teacherOptimateApi.cancelEvent(cancelEvent.id, { reason_code: reasonCode, note })
+    setCancelEvent(null)
+    await load(true)
+  }
 
   return (
     <>
       <PageHeader
         title="Мій розклад"
-        sub={loading ? 'Завантаження...' : 'Уроки та робочий графік з Optimate'}
-      />
+        sub={loading ? 'Завантаження...' : `${plannedCount} запланованих · синхронізація з Optimate`}
+      >
+        <button type="button" className="btn btn-primary btn-sm" onClick={() => setCreateOpen(true)}>
+          + Запланувати урок
+        </button>
+      </PageHeader>
 
       {error && <div className="alert">{error}</div>}
 
-      <Card title="Робочий графік (доступність)">
+      <div className="schedule-page-hero">
+        <div className="schedule-page-hero-copy">
+          <h2 className="schedule-page-hero-title">Плануйте уроки прямо тут</h2>
+          <p className="schedule-page-hero-text">
+            Оберіть учня, дату та час — урок одразу потрапить у Optimate. Скасування з причиною
+            зберігається в LMS.
+          </p>
+        </div>
+        <button type="button" className="btn btn-primary schedule-page-hero-btn" onClick={() => setCreateOpen(true)}>
+          Запланувати урок
+        </button>
+      </div>
+
+      <Card title="Календар уроків">
+        <EventsCalendar
+          events={calendarEvents}
+          loading={loading}
+          emptyLabel="Уроків не знайдено — створіть перший урок"
+          defaultView="week"
+          entityLinks="teacher"
+          showParticipants
+          showFormatLegend
+          enableHomework
+          enableCurriculumTopic
+          curriculumAudience="teacher"
+          enableTeacherCancel
+          onTeacherCancel={setCancelEvent}
+        />
+      </Card>
+
+      <Card title="Робочий графік (доступність Optimate)">
         {loading && <Empty label="Завантаження..." />}
         {!loading && !schedule && <Empty label="Графік не налаштовано в Optimate" />}
         {!loading && schedule && (
@@ -64,20 +117,18 @@ export default function TeacherSchedulePage() {
         )}
       </Card>
 
-      <Card title="Календар уроків">
-        <EventsCalendar
-          events={calendarEvents}
-          loading={loading}
-          emptyLabel="Уроків не знайдено"
-          defaultView="week"
-          entityLinks="teacher"
-          showParticipants
-          showFormatLegend
-          enableHomework
-          enableCurriculumTopic
-          curriculumAudience="teacher"
-        />
-      </Card>
+      <ScheduleLessonPanel
+        open={createOpen}
+        onClose={() => setCreateOpen(false)}
+        onCreated={load}
+      />
+
+      <TeacherCancelLessonDialog
+        open={!!cancelEvent}
+        eventTitle={cancelEvent?.title || 'Урок'}
+        onClose={() => setCancelEvent(null)}
+        onConfirm={handleCancelConfirm}
+      />
     </>
   )
 }

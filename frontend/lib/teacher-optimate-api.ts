@@ -8,6 +8,9 @@ export type TeacherLessonStatsDayActivity = WeekActivityDay
 
 export interface TeacherLessonStats {
   month_label: string
+  stats_year: number
+  stats_month: number
+  is_current_month: boolean
   days_back: number
   days_forward: number
   completed_in_period: number
@@ -23,10 +26,14 @@ export interface TeacherLessonStats {
   month_change_pct: number
   week_activity: TeacherLessonStatsDayActivity[]
   unique_students_month: number
+  unique_students_speaking_club_month: number
   trial_lessons_month: number
   format_breakdown_month: LessonFormatBreakdown
   busiest_weekday_label: string
   avg_lessons_per_week: number
+  total_students: number
+  students_speaking_club_only: number
+  students_with_regular_lessons: number
   cache: CacheMeta
 }
 
@@ -56,6 +63,15 @@ export interface TeacherSchedulesResponse {
 
 export type TeacherEvent = StudentEvent & { student_names?: string[] }
 
+export interface TeacherStudentProduct {
+  product_id: string
+  product_name: string
+  product_type?: number | null
+  lessons_remaining: number
+  lessons_total: number
+  lessons_used: number
+}
+
 export interface TeacherStudent {
   id: string
   full_name: string
@@ -65,9 +81,69 @@ export interface TeacherStudent {
   phone?: string | null
   skill_level_label?: string | null
   remaining_lessons: number
+  lessons_total: number
+  lessons_used: number
+  is_speaking_club_only: boolean
   planned_lessons: number
   completed_lessons: number
   product_names: string[]
+  products: TeacherStudentProduct[]
+}
+
+export interface TeacherTransaction {
+  id: string
+  type: number
+  type_label: string
+  amount: number
+  signed_amount: number
+  description?: string | null
+  transaction_date?: string | null
+  created_at?: string | null
+  product_id?: string | null
+  product_name?: string | null
+  product_type?: number | null
+  lesson_id?: string | null
+  is_trial?: boolean | null
+  period_start_date?: string | null
+  period_end_date?: string | null
+  salary_invoice_id?: string | null
+  student_names: string[]
+  is_credit: boolean
+}
+
+export interface TeacherTransactionsSummary {
+  earned_total: number
+  payout_total: number
+  lesson_accrual_count: number
+  payout_count: number
+  date_from?: string | null
+  date_to?: string | null
+}
+
+export interface PaginatedTeacherTransactions {
+  data: TeacherTransaction[]
+  total: number
+  page: number
+  page_size: number
+  summary: TeacherTransactionsSummary
+  cache: CacheMeta
+}
+
+export interface LessonCancellationReason {
+  code: string
+  label: string
+}
+
+export interface TeacherEventCreatePayload {
+  student_id: string
+  product_id?: string
+  starts_at: string
+  duration?: number
+}
+
+export interface TeacherEventCancelPayload {
+  reason_code: string
+  note?: string
 }
 
 export interface PaginatedTeacherStudents {
@@ -147,13 +223,23 @@ export const teacherOptimateApi = {
       withRefreshQuery(`/api/teacher/optimate/schedules${q}`, refresh),
     )
   },
-  lessonStats: (daysBack = 365, daysForward = 90, refresh?: boolean) =>
-    teacherFetch<TeacherLessonStats>(
-      withRefreshQuery(
-        `/api/teacher/optimate/lesson-stats?days_back=${daysBack}&days_forward=${daysForward}`,
-        refresh,
-      ),
-    ),
+  lessonStats: (
+    daysBack = 365,
+    daysForward = 90,
+    refresh?: boolean,
+    year?: number,
+    month?: number,
+  ) => {
+    const q = new URLSearchParams({
+      days_back: String(daysBack),
+      days_forward: String(daysForward),
+    })
+    if (year != null) q.set('year', String(year))
+    if (month != null) q.set('month', String(month))
+    return teacherFetch<TeacherLessonStats>(
+      withRefreshQuery(`/api/teacher/optimate/lesson-stats?${q}`, refresh),
+    )
+  },
   events: (daysBack = 7, daysForward = 30, refresh?: boolean) =>
     teacherFetch<PaginatedEvents & { data: TeacherEvent[] }>(
       withRefreshQuery(
@@ -180,4 +266,33 @@ export const teacherOptimateApi = {
       withRefreshQuery('/api/teacher/optimate/groups', refresh),
     ),
   refreshAll: () => teacherFetch<void>('/api/teacher/optimate/refresh', { method: 'POST' }),
+  transactions: (
+    page = 1,
+    pageSize = 20,
+    dateFrom?: string,
+    dateTo?: string,
+    refresh?: boolean,
+  ) => {
+    const q = new URLSearchParams({
+      page: String(page),
+      page_size: String(pageSize),
+    })
+    if (dateFrom) q.set('date_from', dateFrom)
+    if (dateTo) q.set('date_to', dateTo)
+    return teacherFetch<PaginatedTeacherTransactions>(
+      withRefreshQuery(`/api/teacher/optimate/transactions?${q}`, refresh),
+    )
+  },
+  cancellationReasons: () =>
+    teacherFetch<LessonCancellationReason[]>('/api/teacher/optimate/cancellation-reasons'),
+  createEvent: (payload: TeacherEventCreatePayload) =>
+    teacherFetch<{ ok: boolean; event_id: string; message: string }>(
+      '/api/teacher/optimate/events',
+      { method: 'POST', body: JSON.stringify(payload) },
+    ),
+  cancelEvent: (eventId: string, payload: TeacherEventCancelPayload) =>
+    teacherFetch<{ ok: boolean; event_id: string; message: string }>(
+      `/api/teacher/optimate/events/${encodeURIComponent(eventId)}/cancel`,
+      { method: 'POST', body: JSON.stringify(payload) },
+    ),
 }

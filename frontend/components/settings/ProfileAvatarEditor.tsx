@@ -83,8 +83,6 @@ export function ProfileAvatarEditor({ name, profile, role, onUpdated }: ProfileA
         </div>
 
         <div className="profile-avatar-editor-body">
-          <div className="profile-avatar-editor-name">{name || initials}</div>
-
           <div className="profile-avatar-editor-actions">
             <button
               type="button"

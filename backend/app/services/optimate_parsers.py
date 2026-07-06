@@ -106,6 +106,27 @@ def parse_student_notes(notes: Any) -> list[dict[str, Any]]:
     return parsed
 
 
+from app.services.optimate_labels import PRODUCT_TYPE_LABELS
+
+SPEAKING_CLUB_PRODUCT_TYPE = 3
+
+
+def normalize_lesson_counts(
+    remaining: float,
+    total: float,
+    used: float,
+) -> tuple[float, float, float]:
+    """Узгоджує remaining / purchased / used, якщо Optimate повернув лише залишок."""
+    remaining = float(remaining or 0)
+    total = float(total or 0)
+    used = float(used or 0)
+    if total <= 0 and (remaining > 0 or used > 0):
+        total = remaining + used
+    if used <= 0 and total > 0 and remaining >= 0:
+        used = max(0.0, total - remaining)
+    return remaining, total, used
+
+
 def _product_remaining_lessons(product: dict[str, Any]) -> float:
     financial = product.get("financial") or {}
     if isinstance(financial, dict):
@@ -231,6 +252,7 @@ def _products_summary(products: Any) -> list[dict[str, Any]]:
             "purchased",
         )
         used = OptimateClient._first_number(financial, "lessonsUsed", "usedLessons", "used")
+        remaining, total, used = normalize_lesson_counts(remaining, total, used)
         result.append({
             "product_id": str(product.get("productId") or product.get("id") or ""),
             "product_name": product.get("productName") or product.get("name") or "—",
@@ -242,6 +264,32 @@ def _products_summary(products: Any) -> list[dict[str, Any]]:
     return result
 
 
+def _is_speaking_club_only_student(item: dict[str, Any]) -> bool:
+    products = item.get("products") or []
+    if not isinstance(products, list) or not products:
+        return False
+    typed = [p for p in products if isinstance(p, dict) and int(p.get("productType") or 0)]
+    if not typed:
+        return False
+    return all(int(p.get("productType") or 0) == SPEAKING_CLUB_PRODUCT_TYPE for p in typed)
+
+
+def _aggregate_student_lessons(
+    products: Any,
+    *,
+    exclude_speaking_club: bool = False,
+) -> tuple[float, float, float]:
+    summaries = _products_summary(products)
+    if exclude_speaking_club:
+        primary = [s for s in summaries if int(s.get("product_type") or 0) != SPEAKING_CLUB_PRODUCT_TYPE]
+        if primary:
+            summaries = primary
+    remaining = sum(s["lessons_remaining"] for s in summaries)
+    total = sum(s["lessons_total"] for s in summaries)
+    used = sum(s["lessons_used"] for s in summaries)
+    return normalize_lesson_counts(remaining, total, used)
+
+
 def parse_student_list_item(item: dict[str, Any]) -> dict[str, Any]:
     first_name = (item.get("firstName") or "").strip()
     last_name = (item.get("lastName") or "").strip()
@@ -250,6 +298,7 @@ def parse_student_list_item(item: dict[str, Any]) -> dict[str, Any]:
     skill = item.get("avgSkillLevel")
 
     remaining = _resolve_student_remaining(item)
+    _, lessons_total, lessons_used = _aggregate_student_lessons(item.get("products"))
 
     teacher_pairs = collect_student_teacher_pairs(item)
 
@@ -268,6 +317,8 @@ def parse_student_list_item(item: dict[str, Any]) -> dict[str, Any]:
         "skill_level_label": SKILL_LEVEL_LABELS.get(int(skill), None) if skill is not None else None,
         "product_count": int(item.get("productCount") or len(item.get("products") or [])),
         "remaining_lessons": float(remaining or 0),
+        "lessons_total": float(lessons_total),
+        "lessons_used": float(lessons_used),
         "planned_lessons": float(item.get("plannedLessonCount") or 0),
         "completed_lessons": float(item.get("completedLessonCount") or 0),
         "teacher_ids": [tid for tid, _ in teacher_pairs],
@@ -286,7 +337,11 @@ def parse_teacher_student_item(item: dict[str, Any]) -> dict[str, Any]:
     status = int(item.get("status") or 0)
     skill = item.get("avgSkillLevel")
 
-    remaining = _resolve_student_remaining(item)
+    remaining, lessons_total, lessons_used = _aggregate_student_lessons(
+        item.get("products"),
+        exclude_speaking_club=True,
+    )
+    is_speaking_club_only = _is_speaking_club_only_student(item)
 
     products_summary = _products_summary(item.get("products"))
     product_names = [p["product_name"] for p in products_summary if p.get("product_name")]
@@ -302,8 +357,11 @@ def parse_teacher_student_item(item: dict[str, Any]) -> dict[str, Any]:
         "phone": phone,
         "skill_level_label": SKILL_LEVEL_LABELS.get(int(skill), None) if skill else None,
         "remaining_lessons": float(remaining or 0),
+        "lessons_total": float(lessons_total),
+        "lessons_used": float(lessons_used),
         "planned_lessons": float(item.get("plannedLessonCount") or 0),
         "completed_lessons": float(item.get("completedLessonCount") or 0),
+        "is_speaking_club_only": is_speaking_club_only,
         "product_names": product_names,
         "products_summary": products_summary,
     }

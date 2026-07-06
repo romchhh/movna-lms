@@ -121,7 +121,9 @@ export function TeacherStudentCurriculumPanel({
           {active && (
             <p className="stc-panel-program-name">{active.program_title}</p>
           )}
-          <p className="stc-panel-sub">Теми уроків у розкладі та прогрес учня</p>
+          <p className="stc-panel-sub">
+            Теми уроків у розкладі та прогрес учня. Синхронізація з Optimate враховує лише уроки після призначення програми.
+          </p>
         </div>
         <button
           type="button"
@@ -234,7 +236,7 @@ export function TeacherStudentCurriculumPanel({
   )
 }
 
-function AssignCurriculumWizard({
+export function AssignCurriculumWizard({
   studentOptimateId,
   studentName,
   replace,

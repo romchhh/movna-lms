@@ -18,6 +18,8 @@ from app.models.student_curriculum import (
     EnrollmentStatus,
     SlotStatus,
 )
+from app.models.teacher_student_link import TeacherStudentLink, TeacherStudentLinkType
+from app.models.teacher_event_cancellation import TeacherEventCancellation
 
 __all__ = [
     "User", "UserRole",
@@ -26,5 +28,7 @@ __all__ = [
     "TeacherCurriculum", "TeacherCurriculumModule", "TeacherCurriculumLesson",
     "StudentCurriculumEnrollment", "StudentCurriculumSlot",
     "CurriculumSource", "EnrollmentStatus", "SlotStatus",
+    "TeacherStudentLink", "TeacherStudentLinkType",
+    "TeacherEventCancellation",
     "FaqItem", "FaqAudience",
 ]

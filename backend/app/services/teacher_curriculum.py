@@ -9,6 +9,7 @@ from app.models.teacher_curriculum import (
     TeacherCurriculumModule,
 )
 from app.models.user import User
+from app.schemas.curriculum import CurriculumProgramOut
 from app.schemas.teacher_curriculum import (
     TeacherCurriculumAuthorOut,
     TeacherCurriculumLessonOut,
@@ -48,9 +49,22 @@ def _counts(curriculum: TeacherCurriculum) -> tuple[int, int]:
     return len(modules), lesson_count
 
 
+def _provenance_fields(curriculum: TeacherCurriculum) -> dict:
+    forked_title = None
+    if curriculum.forked_from_curriculum_id and hasattr(curriculum, "forked_from"):
+        forked_title = getattr(curriculum.forked_from, "title", None)
+    return {
+        "source_movna_slug": curriculum.source_movna_slug,
+        "source_movna_name": curriculum.source_movna_name,
+        "forked_from_curriculum_id": curriculum.forked_from_curriculum_id,
+        "forked_from_title": forked_title,
+    }
+
+
 def _curriculum_out(curriculum: TeacherCurriculum, viewer: User) -> TeacherCurriculumOut:
     module_count, lesson_count = _counts(curriculum)
     is_mine = curriculum.author_id == viewer.id
+    prov = _provenance_fields(curriculum)
     return TeacherCurriculumOut(
         id=curriculum.id,
         title=curriculum.title,
@@ -58,6 +72,7 @@ def _curriculum_out(curriculum: TeacherCurriculum, viewer: User) -> TeacherCurri
         author=_author_out(curriculum.author),
         is_mine=is_mine,
         can_edit=is_mine,
+        **prov,
         modules=[_module_out(m) for m in curriculum.modules],
         module_count=module_count,
         lesson_count=lesson_count,
@@ -69,6 +84,7 @@ def _curriculum_out(curriculum: TeacherCurriculum, viewer: User) -> TeacherCurri
 def _summary_out(curriculum: TeacherCurriculum, viewer: User) -> TeacherCurriculumSummaryOut:
     module_count, lesson_count = _counts(curriculum)
     is_mine = curriculum.author_id == viewer.id
+    prov = _provenance_fields(curriculum)
     return TeacherCurriculumSummaryOut(
         id=curriculum.id,
         title=curriculum.title,
@@ -76,6 +92,7 @@ def _summary_out(curriculum: TeacherCurriculum, viewer: User) -> TeacherCurricul
         author=_author_out(curriculum.author),
         is_mine=is_mine,
         can_edit=is_mine,
+        **prov,
         module_count=module_count,
         lesson_count=lesson_count,
         updated_at=curriculum.updated_at,
@@ -107,6 +124,7 @@ async def _get_curriculum_or_404(db: AsyncSession, curriculum_id: int) -> Teache
         select(TeacherCurriculum)
         .options(
             selectinload(TeacherCurriculum.author),
+            selectinload(TeacherCurriculum.forked_from),
             selectinload(TeacherCurriculum.modules).selectinload(TeacherCurriculumModule.lessons),
         )
         .where(TeacherCurriculum.id == curriculum_id)
@@ -115,6 +133,62 @@ async def _get_curriculum_or_404(db: AsyncSession, curriculum_id: int) -> Teache
     if not curriculum:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Програму не знайдено")
     return curriculum
+
+
+async def _find_author_movna_fork(
+    db: AsyncSession, author_id: int, movna_slug: str
+) -> TeacherCurriculum | None:
+    result = await db.execute(
+        select(TeacherCurriculum)
+        .options(
+            selectinload(TeacherCurriculum.author),
+            selectinload(TeacherCurriculum.forked_from),
+            selectinload(TeacherCurriculum.modules).selectinload(TeacherCurriculumModule.lessons),
+        )
+        .where(
+            TeacherCurriculum.author_id == author_id,
+            TeacherCurriculum.source_movna_slug == movna_slug.strip().lower(),
+        )
+        .order_by(TeacherCurriculum.updated_at.desc())
+        .limit(1)
+    )
+    return result.scalar_one_or_none()
+
+
+def _apply_movna_program(curriculum: TeacherCurriculum, program: CurriculumProgramOut) -> None:
+    curriculum.modules.clear()
+    for mod_idx, mod in enumerate(program.modules):
+        module = TeacherCurriculumModule(title=mod.name.strip(), sort_order=mod_idx)
+        for les_idx, les in enumerate(mod.lessons):
+            module.lessons.append(
+                TeacherCurriculumLesson(
+                    number=les.number,
+                    lesson_type=(les.lesson_type or "").strip(),
+                    topic=(les.topic or "").strip(),
+                    student_activities=(les.student_activities or "").strip(),
+                    sort_order=les_idx,
+                )
+            )
+        curriculum.modules.append(module)
+
+
+def _copy_curriculum_modules(
+    target: TeacherCurriculum, source: TeacherCurriculum
+) -> None:
+    target.modules.clear()
+    for mod_idx, mod in enumerate(source.modules):
+        module = TeacherCurriculumModule(title=mod.title, sort_order=mod_idx)
+        for les_idx, les in enumerate(mod.lessons):
+            module.lessons.append(
+                TeacherCurriculumLesson(
+                    number=les.number,
+                    lesson_type=les.lesson_type,
+                    topic=les.topic,
+                    student_activities=les.student_activities,
+                    sort_order=les_idx,
+                )
+            )
+        target.modules.append(module)
 
 
 def _ensure_can_view(curriculum: TeacherCurriculum, viewer: User) -> None:
@@ -133,6 +207,7 @@ async def list_teacher_curricula(db: AsyncSession, viewer: User) -> TeacherCurri
         select(TeacherCurriculum)
         .options(
             selectinload(TeacherCurriculum.author),
+            selectinload(TeacherCurriculum.forked_from),
             selectinload(TeacherCurriculum.modules).selectinload(TeacherCurriculumModule.lessons),
         )
         .where(
@@ -189,3 +264,63 @@ async def delete_teacher_curriculum(
     curriculum = await _get_curriculum_or_404(db, curriculum_id)
     _ensure_can_edit(curriculum, viewer)
     await db.delete(curriculum)
+
+
+async def fork_from_movna_program(
+    db: AsyncSession,
+    viewer: User,
+    program: CurriculumProgramOut,
+    *,
+    title: str | None = None,
+    reuse_existing: bool = True,
+) -> TeacherCurriculumOut:
+    slug = program.slug.strip().lower()
+    if reuse_existing:
+        existing = await _find_author_movna_fork(db, viewer.id, slug)
+        if existing:
+            return _curriculum_out(existing, viewer)
+
+    curriculum = TeacherCurriculum(
+        title=(title or f"{program.name} (моя версія)").strip(),
+        author_id=viewer.id,
+        is_public=False,
+        source_movna_slug=slug,
+        source_movna_sheet_id=program.sheet_id,
+        source_movna_name=program.name,
+    )
+    _apply_movna_program(curriculum, program)
+    db.add(curriculum)
+    await db.flush()
+    curriculum = await _get_curriculum_or_404(db, curriculum.id)
+    return _curriculum_out(curriculum, viewer)
+
+
+async def fork_from_teacher_curriculum(
+    db: AsyncSession,
+    viewer: User,
+    source_id: int,
+) -> TeacherCurriculumOut:
+    source = await _get_curriculum_or_404(db, source_id)
+    _ensure_can_view(source, viewer)
+    if source.author_id == viewer.id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Це вже ваша програма",
+        )
+
+    curriculum = TeacherCurriculum(
+        title=f"{source.title} (копія)",
+        author_id=viewer.id,
+        is_public=False,
+        source_movna_slug=source.source_movna_slug,
+        source_movna_sheet_id=source.source_movna_sheet_id,
+        source_movna_name=source.source_movna_name,
+        forked_from_curriculum_id=source.id,
+    )
+    _copy_curriculum_modules(curriculum, source)
+    db.add(curriculum)
+    await db.flush()
+    curriculum = await _get_curriculum_or_404(db, curriculum.id)
+    out = _curriculum_out(curriculum, viewer)
+    out.forked_from_title = source.title
+    return out

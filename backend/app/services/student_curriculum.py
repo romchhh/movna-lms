@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 
 from fastapi import HTTPException, status
 from sqlalchemy import select
@@ -275,6 +275,39 @@ def _is_cancelled(event) -> bool:
     return "скас" in label or "cancel" in label
 
 
+def _parse_event_starts_at(value: str) -> datetime | None:
+    if not value:
+        return None
+    try:
+        normalized = value.replace("Z", "+00:00")
+        dt = datetime.fromisoformat(normalized)
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        return dt.astimezone(timezone.utc)
+    except ValueError:
+        return None
+
+
+def _as_utc_aware(dt: datetime) -> datetime:
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(timezone.utc)
+
+
+def _events_from_assignment(
+    events: list,
+    assigned_at: datetime,
+) -> list:
+    """Лише уроки з Optimate, що починаються після призначення програми в LMS."""
+    cutoff = _as_utc_aware(assigned_at) - timedelta(minutes=1)
+    eligible: list = []
+    for event in events:
+        start = _parse_event_starts_at(getattr(event, "starts_at", "") or "")
+        if start is not None and start >= cutoff:
+            eligible.append(event)
+    return eligible
+
+
 async def _collect_student_events(
     teacher_optimate_id: str,
     student_optimate_id: str,
@@ -292,13 +325,53 @@ async def _collect_student_events(
     return filtered
 
 
+def _repair_slots_before_assignment(
+    enrollment: StudentCurriculumEnrollment,
+    slots: list[StudentCurriculumSlot],
+) -> int:
+    """Скидає теми, помилково привʼязані до уроків Optimate до призначення програми."""
+    cutoff = _as_utc_aware(enrollment.assigned_at or datetime.utcnow()) - timedelta(minutes=1)
+    repaired = 0
+    for slot in slots:
+        start = _parse_event_starts_at(slot.event_starts_at or "")
+        if start is None:
+            continue
+        if start >= cutoff:
+            continue
+        if (
+            slot.optimate_event_id
+            or slot.status != SlotStatus.PENDING
+            or slot.completed_at is not None
+        ):
+            slot.optimate_event_id = ""
+            slot.event_starts_at = ""
+            slot.status = SlotStatus.PENDING
+            slot.completed_at = None
+            repaired += 1
+    return repaired
+
+
 async def sync_enrollment_events(
     db: AsyncSession,
     enrollment: StudentCurriculumEnrollment,
     teacher_optimate_id: str,
 ) -> int:
-    events = await _collect_student_events(teacher_optimate_id, enrollment.student_optimate_id)
     slots = sorted(enrollment.slots or [], key=lambda s: s.sequence_index)
+    _repair_slots_before_assignment(enrollment, slots)
+
+    events = await _collect_student_events(teacher_optimate_id, enrollment.student_optimate_id)
+    assigned_at = enrollment.assigned_at or datetime.utcnow()
+    events = _events_from_assignment(events, assigned_at)
+    events_by_id = {str(e.id): e for e in events}
+
+    # Оновити статус уже привʼязаних уроків (напр. проведений після останньої синхронізації).
+    for slot in slots:
+        if not slot.optimate_event_id:
+            continue
+        event = events_by_id.get(slot.optimate_event_id)
+        if event and event.is_completed and slot.status != SlotStatus.COMPLETED:
+            slot.status = SlotStatus.COMPLETED
+            slot.completed_at = datetime.utcnow()
 
     used_event_ids = {s.optimate_event_id for s in slots if s.optimate_event_id}
     unmapped_slots = [s for s in slots if not s.optimate_event_id and s.status == SlotStatus.PENDING]
@@ -470,6 +543,9 @@ async def get_teacher_student_curriculum(
     )
     enrollments = list(result.scalars().all())
     active = next((e for e in enrollments if e.status == EnrollmentStatus.ACTIVE), None)
+    if active and active.slots:
+        if _repair_slots_before_assignment(active, list(active.slots)):
+            await db.flush()
     history = [
         _summary_out(e) for e in enrollments
         if e.status != EnrollmentStatus.ACTIVE
@@ -497,6 +573,9 @@ async def get_student_overview(
     )
     enrollments = list(result.scalars().all())
     active = next((e for e in enrollments if e.status == EnrollmentStatus.ACTIVE), None)
+    if active and active.slots:
+        if _repair_slots_before_assignment(active, list(active.slots)):
+            await db.flush()
     history = [
         _summary_out(e) for e in enrollments
         if e.status != EnrollmentStatus.ACTIVE

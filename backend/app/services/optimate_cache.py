@@ -8,6 +8,7 @@ from typing import Any, Optional
 from app.core.config import settings
 from app.services.optimate import (
     ParsedEvent,
+    ParsedTeacherTransaction,
     ParsedTransaction,
     ProductBalance,
     get_optimate_client,
@@ -509,6 +510,86 @@ def invalidate_teacher_cache(teacher_id: str) -> None:
     optimate_cache.invalidate_prefix(_teacher_prefix(teacher_id))
 
 
+async def get_cached_teacher_transactions(
+    teacher_id: str,
+    page: int,
+    page_size: int,
+    date_from: Optional[str] = None,
+    date_to: Optional[str] = None,
+    *,
+    force_refresh: bool = False,
+) -> tuple[tuple[list[ParsedTeacherTransaction], int], float, bool]:
+    client = get_optimate_client()
+
+    async def fetch() -> tuple[list[ParsedTeacherTransaction], int]:
+        return await client.get_teacher_transactions(
+            teacher_id,
+            page_number=page,
+            page_size=page_size,
+            date_from=date_from,
+            date_to=date_to,
+        )
+
+    return await optimate_cache.get_or_fetch(
+        f"{_teacher_prefix(teacher_id)}transactions:{page}:{page_size}:{date_from or ''}:{date_to or ''}",
+        settings.OPTIMATE_CACHE_TRANSACTIONS_TTL,
+        fetch,
+        force_refresh=force_refresh,
+    )
+
+
+async def get_cached_teacher_transactions_summary(
+    teacher_id: str,
+    date_from: Optional[str] = None,
+    date_to: Optional[str] = None,
+    *,
+    force_refresh: bool = False,
+) -> tuple[dict[str, Any], float, bool]:
+    client = get_optimate_client()
+
+    async def fetch() -> dict[str, Any]:
+        earned_total = 0.0
+        payout_total = 0.0
+        lesson_accrual_count = 0
+        payout_count = 0
+        page = 1
+        page_size = 100
+        total = 0
+        while page <= 20:
+            items, total = await client.get_teacher_transactions(
+                teacher_id,
+                page_number=page,
+                page_size=page_size,
+                date_from=date_from,
+                date_to=date_to,
+            )
+            for tx in items:
+                if tx.type == 1 and tx.signed_amount > 0:
+                    earned_total += tx.signed_amount
+                    lesson_accrual_count += 1
+                elif tx.type == 2 and tx.signed_amount < 0:
+                    payout_total += abs(tx.signed_amount)
+                    payout_count += 1
+            if page * page_size >= total or not items:
+                break
+            page += 1
+        return {
+            "earned_total": round(earned_total, 2),
+            "payout_total": round(payout_total, 2),
+            "lesson_accrual_count": lesson_accrual_count,
+            "payout_count": payout_count,
+            "date_from": date_from,
+            "date_to": date_to,
+        }
+
+    return await optimate_cache.get_or_fetch(
+        f"{_teacher_prefix(teacher_id)}tx_summary:{date_from or ''}:{date_to or ''}",
+        settings.OPTIMATE_CACHE_TRANSACTIONS_TTL,
+        fetch,
+        force_refresh=force_refresh,
+    )
+
+
 async def get_cached_teacher_schedules(
     teacher_id: str,
     date: Optional[str],
@@ -564,6 +645,8 @@ async def get_cached_teacher_lesson_stats(
     teacher_id: str,
     days_back: int = 365,
     days_forward: int = 90,
+    stats_year: Optional[int] = None,
+    stats_month: Optional[int] = None,
     *,
     force_refresh: bool = False,
 ) -> tuple[dict[str, Any], float, bool]:
@@ -571,19 +654,30 @@ async def get_cached_teacher_lesson_stats(
         DEFAULT_DAYS_BACK,
         DEFAULT_DAYS_FORWARD,
         compute_teacher_lesson_stats,
+        count_teacher_student_buckets,
         fetch_all_teacher_events,
     )
 
     back = days_back if days_back > 0 else DEFAULT_DAYS_BACK
     forward = days_forward if days_forward > 0 else DEFAULT_DAYS_FORWARD
+    year_key = stats_year if stats_year is not None else 0
+    month_key = stats_month if stats_month is not None else 0
 
     async def fetch() -> dict[str, Any]:
         events, _, _ = await fetch_all_teacher_events(teacher_id, back, forward)
         events = await _enrich_parsed_events(events, force_refresh=False)
-        return compute_teacher_lesson_stats(events, days_back=back, days_forward=forward)
+        stats = compute_teacher_lesson_stats(
+            events,
+            days_back=back,
+            days_forward=forward,
+            stats_year=stats_year,
+            stats_month=stats_month,
+        )
+        buckets = await count_teacher_student_buckets(teacher_id)
+        return {**stats, **buckets}
 
     return await optimate_cache.get_or_fetch(
-        f"{_teacher_prefix(teacher_id)}lesson_stats:{back}:{forward}",
+        f"{_teacher_prefix(teacher_id)}lesson_stats:{back}:{forward}:{year_key}:{month_key}",
         settings.OPTIMATE_CACHE_TEACHER_EVENTS_TTL,
         fetch,
         force_refresh=force_refresh,

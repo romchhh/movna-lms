@@ -1,4 +1,5 @@
 import { apiFetch } from './api-fetch'
+import type { CurriculumProgram } from './curriculum-api'
 
 export interface TeacherCurriculumAuthor {
   id: number
@@ -26,6 +27,10 @@ export interface TeacherCurriculumProgram {
   author: TeacherCurriculumAuthor
   is_mine: boolean
   can_edit: boolean
+  source_movna_slug: string | null
+  source_movna_name: string | null
+  forked_from_curriculum_id: number | null
+  forked_from_title: string | null
   modules: TeacherCurriculumModule[]
   module_count: number
   lesson_count: number
@@ -40,6 +45,10 @@ export interface TeacherCurriculumSummary {
   author: TeacherCurriculumAuthor
   is_mine: boolean
   can_edit: boolean
+  source_movna_slug: string | null
+  source_movna_name: string | null
+  forked_from_curriculum_id: number | null
+  forked_from_title: string | null
   module_count: number
   lesson_count: number
   updated_at: string
@@ -75,6 +84,13 @@ export const teacherCurriculumApi = {
   update: (id: number, body: TeacherCurriculumWrite) =>
     apiFetch<TeacherCurriculumProgram>(`${base}/${id}`, { method: 'PUT', body: JSON.stringify(body) }),
   remove: (id: number) => apiFetch<void>(`${base}/${id}`, { method: 'DELETE' }),
+  forkFromMovna: (slug: string, title?: string) =>
+    apiFetch<TeacherCurriculumProgram>(`${base}/from-movna/${encodeURIComponent(slug)}`, {
+      method: 'POST',
+      body: JSON.stringify(title ? { title } : {}),
+    }),
+  forkFromProgram: (id: number) =>
+    apiFetch<TeacherCurriculumProgram>(`${base}/${id}/fork`, { method: 'POST' }),
 }
 
 export const LESSON_TYPE_OPTIONS = [
@@ -143,6 +159,24 @@ export function programToEditor(program: TeacherCurriculumProgram) {
       ...m,
       _key: crypto.randomUUID(),
       lessons: m.lessons.map(l => ({ ...l, _key: crypto.randomUUID() })),
+    })),
+  }
+}
+
+export function movnaProgramToEditor(program: CurriculumProgram) {
+  return {
+    title: `${program.name} (моя версія)`,
+    isPublic: false,
+    modules: program.modules.map((m, idx) => ({
+      _key: crypto.randomUUID(),
+      title: m.name,
+      lessons: m.lessons.map(l => ({
+        _key: crypto.randomUUID(),
+        number: l.number,
+        lesson_type: l.lesson_type,
+        topic: l.topic,
+        student_activities: l.student_activities,
+      })),
     })),
   }
 }

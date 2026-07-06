@@ -10,9 +10,11 @@ import { useState } from 'react'
 
 interface CurriculumProgramDetailProps {
   program: CurriculumProgram
+  onCustomize?: () => void
+  customizing?: boolean
 }
 
-export function CurriculumProgramDetail({ program }: CurriculumProgramDetailProps) {
+export function CurriculumProgramDetail({ program, onCustomize, customizing }: CurriculumProgramDetailProps) {
   const [openModules, setOpenModules] = useState<Set<string>>(
     () => new Set(program.modules.slice(0, 1).map(m => m.name)),
   )
@@ -31,17 +33,31 @@ export function CurriculumProgramDetail({ program }: CurriculumProgramDetailProp
       <header className="curr-program-hero">
         <div>
           <h2 className="curr-program-title">{program.name}</h2>
-          <p className="curr-program-meta">Навчальна програма з Google Sheets</p>
+          <p className="curr-program-meta">
+            Оригінал з Google Sheets · редагування створює вашу копію на сервері LMS
+          </p>
         </div>
-        <div className="curr-program-stats">
-          <div className="curr-stat-chip">
-            <span className="curr-stat-value">{program.module_count}</span>
-            <span className="curr-stat-label">модулів</span>
+        <div className="curr-program-hero-side">
+          <div className="curr-program-stats">
+            <div className="curr-stat-chip">
+              <span className="curr-stat-value">{program.module_count}</span>
+              <span className="curr-stat-label">модулів</span>
+            </div>
+            <div className="curr-stat-chip">
+              <span className="curr-stat-value">{program.lesson_count}</span>
+              <span className="curr-stat-label">уроків</span>
+            </div>
           </div>
-          <div className="curr-stat-chip">
-            <span className="curr-stat-value">{program.lesson_count}</span>
-            <span className="curr-stat-label">уроків</span>
-          </div>
+          {onCustomize && (
+            <button
+              type="button"
+              className="btn btn-sm btn-teal"
+              onClick={onCustomize}
+              disabled={customizing}
+            >
+              {customizing ? 'Створення копії…' : 'Редагувати копію'}
+            </button>
+          )}
         </div>
       </header>
 

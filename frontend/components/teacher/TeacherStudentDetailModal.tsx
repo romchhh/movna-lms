@@ -1,7 +1,11 @@
 'use client'
 
 import { OptimateEntityModal } from '@/components/admin/OptimateEntityModal'
-import { TeacherStudentCurriculumPanel } from '@/components/curriculum/TeacherStudentCurriculumPanel'
+import {
+  TeacherStudentSettingsButton,
+  TeacherStudentSettingsPanels,
+} from '@/components/teacher/TeacherStudentSettingsMenu'
+import { studentDisplayName } from '@/lib/person-display-name'
 import { teacherOptimateApi } from '@/lib/teacher-optimate-api'
 import type { CacheMeta } from '@/lib/optimate-api'
 import { useCallback, useEffect, useState } from 'react'
@@ -23,6 +27,7 @@ export function TeacherStudentDetailModal({
   const [cache, setCache] = useState<CacheMeta | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [settingsOpen, setSettingsOpen] = useState(false)
 
   const load = useCallback(async (id: string, refresh = false) => {
     setLoading(true)
@@ -44,20 +49,19 @@ export function TeacherStudentDetailModal({
       setDetail(null)
       setCache(null)
       setError('')
+      setSettingsOpen(false)
       return
     }
+    setSettingsOpen(false)
     load(studentId)
   }, [studentId, load])
 
-  const modalTitle = title
-    || (detail?.full_name != null ? String(detail.full_name) : 'Учень')
-
-  const studentName = detail?.full_name != null ? String(detail.full_name) : modalTitle
+  const displayName = studentDisplayName(detail, title || 'Учень')
 
   return (
     <OptimateEntityModal
       open={!!studentId}
-      title={modalTitle}
+      title={displayName}
       entityId={studentId}
       loading={loading}
       error={error}
@@ -68,11 +72,19 @@ export function TeacherStudentDetailModal({
       kind="student"
       audience="teacher"
       overlayClassName={overlayClassName}
-      extraSections={
+      profileActions={
         studentId ? (
-          <TeacherStudentCurriculumPanel
+          <TeacherStudentSettingsButton
+            open={settingsOpen}
+            onToggle={() => setSettingsOpen(open => !open)}
+          />
+        ) : null
+      }
+      profileAddon={
+        settingsOpen && studentId ? (
+          <TeacherStudentSettingsPanels
             studentOptimateId={studentId}
-            studentName={studentName}
+            studentName={displayName}
           />
         ) : null
       }

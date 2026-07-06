@@ -4,6 +4,7 @@ import { EventsCalendar } from '@/components/calendar/EventsCalendar'
 import { HomeworkPendingAlert } from '@/components/homework/HomeworkPendingAlert'
 import { PendingRequestsAlert } from '@/components/lesson-requests/PendingRequestsAlert'
 import { TeacherLessonStatsPanel } from '@/components/teacher/TeacherLessonStatsPanel'
+import { TeacherStudentCardActions } from '@/components/teacher/TeacherStudentCardActions'
 import { TeacherStudentDetailModal } from '@/components/teacher/TeacherStudentDetailModal'
 import { DashboardHero } from '@/components/shared/DashboardHero'
 import { Badge, Card, Empty, StatCard } from '@/components/shared/UI'
@@ -24,6 +25,8 @@ export default function TeacherDashboard() {
   const [studentsTotal, setStudentsTotal] = useState(0)
   const [events, setEvents] = useState<TeacherEvent[]>([])
   const [lessonStats, setLessonStats] = useState<TeacherLessonStats | null>(null)
+  const [statsYear, setStatsYear] = useState<number | undefined>(undefined)
+  const [statsMonth, setStatsMonth] = useState<number | undefined>(undefined)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [selectedId, setSelectedId] = useState<string | null>(null)
@@ -36,7 +39,7 @@ export default function TeacherDashboard() {
       const [studentsRes, eventsRes, statsRes] = await Promise.all([
         teacherOptimateApi.students(1, 8),
         teacherOptimateApi.events(1, 14),
-        teacherOptimateApi.lessonStats(),
+        teacherOptimateApi.lessonStats(365, 90, false, statsYear, statsMonth),
       ])
       setStudents(studentsRes.data)
       setStudentsTotal(studentsRes.total)
@@ -47,15 +50,20 @@ export default function TeacherDashboard() {
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [statsYear, statsMonth])
 
   useEffect(() => {
     load()
   }, [load])
 
-  const activeStudents = useMemo(
-    () => students.filter(s => s.status === 1).length,
+  const regularStudents = useMemo(
+    () => students.filter(s => !s.is_speaking_club_only),
     [students],
+  )
+
+  const activeStudents = useMemo(
+    () => regularStudents.filter(s => s.status === 1).length,
+    [regularStudents],
   )
 
   const todayEvents = useMemo(
@@ -83,9 +91,14 @@ export default function TeacherDashboard() {
         fallbackName="Марія Іваненко"
         subtitle={loading ? 'Завантаження…' : 'Ваш день, учні та найближчі уроки'}
         actions={
-          <Link href="/teacher/schedule" className="btn btn-sm dash-hero-btn">
-            Розклад
-          </Link>
+          <>
+            <Link href="/teacher/salaries" className="btn btn-sm dash-hero-btn btn-secondary">
+              Зарплата
+            </Link>
+            <Link href="/teacher/schedule" className="btn btn-sm dash-hero-btn">
+              Розклад
+            </Link>
+          </>
         }
       />
 
@@ -93,13 +106,23 @@ export default function TeacherDashboard() {
       <PendingRequestsAlert href="/teacher/requests" />
       <HomeworkPendingAlert />
 
-      <TeacherLessonStatsPanel stats={lessonStats} loading={loading} prominent />
+      <TeacherLessonStatsPanel
+        stats={lessonStats}
+        loading={loading}
+        prominent
+        selectedYear={statsYear ?? lessonStats?.stats_year}
+        selectedMonth={statsMonth ?? lessonStats?.stats_month}
+        onMonthChange={(year, month) => {
+          setStatsYear(year)
+          setStatsMonth(month)
+        }}
+      />
 
       <div className="g4 dash-stats" style={{ marginTop: 14 }}>
         <StatCard
           label="Моїх учнів"
-          value={loading ? '…' : studentsTotal}
-          sub={loading ? '' : `${activeStudents} активних`}
+          value={loading ? '…' : (lessonStats?.students_with_regular_lessons ?? studentsTotal)}
+          sub={loading ? '' : `${activeStudents} активних · без Speaking Club`}
         />
         <StatCard
           label="Занять сьогодні"
@@ -115,9 +138,9 @@ export default function TeacherDashboard() {
         />
         <StatCard
           label="Малий баланс"
-          value={loading ? '…' : students.filter(s => s.remaining_lessons <= 2).length}
+          value={loading ? '…' : regularStudents.filter(s => s.remaining_lessons <= 2).length}
           sub="учнів ≤ 2 уроків"
-          danger={!loading && students.some(s => s.remaining_lessons <= 2)}
+          danger={!loading && regularStudents.some(s => s.remaining_lessons <= 2)}
         />
       </div>
 
@@ -127,34 +150,50 @@ export default function TeacherDashboard() {
           {!loading && students.length === 0 && <Empty label="Учнів не знайдено" />}
 
           {!loading && students.map(student => (
-            <button
-              key={student.id}
-              type="button"
-              className="teacher-dash-student-row"
-              onClick={() => {
-                setSelectedId(student.id)
-                setSelectedTitle(student.full_name)
-              }}
-            >
-              <UserAvatar name={student.full_name} optimateId={student.id} size="lg" kind="student" />
-              <div className="teacher-dash-student-body">
-                <div className="admin-table-title">{student.full_name}</div>
-                <div className="admin-table-sub">
-                  {student.product_names[0] || student.email || student.phone || `ID ${student.id}`}
-                </div>
-              </div>
-              <Badge
-                variant={
-                  student.remaining_lessons <= 2
-                    ? 'red'
-                    : student.remaining_lessons <= 4
-                      ? 'amber'
-                      : 'green'
-                }
+            <div key={student.id} className="teacher-dash-student-row-wrap">
+              <button
+                type="button"
+                className="teacher-dash-student-row"
+                onClick={() => {
+                  setSelectedId(student.id)
+                  setSelectedTitle(student.full_name)
+                }}
               >
-                {student.remaining_lessons} ур.
-              </Badge>
-            </button>
+                <UserAvatar name={student.full_name} optimateId={student.id} size="lg" kind="student" />
+                <div className="teacher-dash-student-body">
+                  <div className="admin-table-title">
+                    {student.full_name}
+                    {student.is_speaking_club_only && (
+                      <span style={{ marginLeft: 6, fontSize: 11, color: 'var(--tx3)' }}>SC</span>
+                    )}
+                  </div>
+                  <div className="admin-table-sub">
+                    {student.is_speaking_club_only
+                      ? 'Speaking Club'
+                      : (student.product_names[0] || student.email || student.phone || `ID ${student.id}`)}
+                  </div>
+                </div>
+                <Badge
+                  variant={
+                    student.is_speaking_club_only
+                      ? 'gray'
+                      : student.remaining_lessons <= 2
+                        ? 'red'
+                        : student.remaining_lessons <= 4
+                          ? 'amber'
+                          : 'green'
+                  }
+                >
+                  {student.is_speaking_club_only ? 'SC' : `${student.remaining_lessons} ур.`}
+                </Badge>
+              </button>
+              <TeacherStudentCardActions
+                studentId={student.id}
+                studentName={student.full_name}
+                compact
+                showStatus
+              />
+            </div>
           ))}
 
           <Link href="/teacher/students" className="btn btn-secondary btn-sm btn-full" style={{ marginTop: 12 }}>
@@ -169,7 +208,15 @@ export default function TeacherDashboard() {
             {!loading && todayEvents.map(event => (
               <div
                 key={event.id}
-                className={`schedule-slot ${event.schedule_class === 'group' ? 'group' : 'individual'}`}
+                className={`schedule-slot ${
+                  event.schedule_class === 'group'
+                    ? 'group'
+                    : event.schedule_class === 'speaking_club'
+                      ? 'speaking-club'
+                      : event.schedule_class === 'pair'
+                        ? 'pair'
+                        : 'individual'
+                }`}
                 style={{ marginBottom: 8 }}
               >
                 <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--tx)' }}>

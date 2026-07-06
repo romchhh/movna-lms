@@ -49,6 +49,8 @@ export interface StudentEvent {
   student_ids?: string[]
   teacher_names?: string[]
   teacher_ids?: string[]
+  cancellation_reason?: string | null
+  cancellation_note?: string | null
 }
 
 export interface StudentOverview {
@@ -56,6 +58,8 @@ export interface StudentOverview {
   upcoming_events: StudentEvent[]
   recent_transactions: Transaction[]
   total_lessons_remaining: number
+  total_lessons_purchased: number
+  total_lessons_used: number
   synced_at: string
   cache: CacheMeta
 }

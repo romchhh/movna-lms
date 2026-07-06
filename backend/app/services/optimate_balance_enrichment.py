@@ -5,7 +5,10 @@ import asyncio
 from typing import Any
 
 from app.services.optimate import OptimateClient
-from app.services.optimate_parsers import _sum_remaining_lessons
+from app.services.optimate_parsers import (
+    _product_remaining_lessons,
+    normalize_lesson_counts,
+)
 
 BALANCE_INCLUDE = "products,products.financial"
 ENRICH_CONCURRENCY = 10
@@ -21,14 +24,31 @@ def _product_has_financial(product: dict[str, Any]) -> bool:
     return False
 
 
+def _product_financial_incomplete(product: dict[str, Any]) -> bool:
+    if not isinstance(product, dict):
+        return False
+    if not _product_has_financial(product):
+        return True
+    financial = product.get("financial") if isinstance(product.get("financial"), dict) else {}
+    remaining = _product_remaining_lessons(product)
+    total = OptimateClient._first_number(
+        financial,
+        "lessonsPurchased",
+        "totalLessons",
+        "purchasedLessons",
+        "purchased",
+    )
+    used = OptimateClient._first_number(financial, "lessonsUsed", "usedLessons", "used")
+    _, total_n, used_n = normalize_lesson_counts(remaining, total, used)
+    return remaining > 0 and total_n <= 0 and used_n <= 0
+
+
 def student_needs_balance_enrichment(item: dict[str, Any]) -> bool:
-    """List-відповідь без financial, хоча у учня є продукти."""
+    """List-відповідь без financial або без purchased/used при наявному залишку."""
     products = item.get("products") or []
     if not isinstance(products, list) or not products:
         return False
-    if _sum_remaining_lessons(products) > 0:
-        return False
-    return any(isinstance(p, dict) and not _product_has_financial(p) for p in products)
+    return any(_product_financial_incomplete(p) for p in products if isinstance(p, dict))
 
 
 def merge_student_balance_fields(partial: dict[str, Any], full: dict[str, Any]) -> dict[str, Any]:

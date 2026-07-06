@@ -21,6 +21,10 @@ class TeacherCurriculumWrite(BaseModel):
     modules: list[TeacherCurriculumModuleIn] = Field(default_factory=list)
 
 
+class TeacherCurriculumForkFromMovnaIn(BaseModel):
+    title: str | None = Field(default=None, max_length=255)
+
+
 class TeacherCurriculumAuthorOut(BaseModel):
     id: int
     full_name: str
@@ -43,6 +47,10 @@ class TeacherCurriculumOut(BaseModel):
     author: TeacherCurriculumAuthorOut
     is_mine: bool
     can_edit: bool
+    source_movna_slug: str | None = None
+    source_movna_name: str | None = None
+    forked_from_curriculum_id: int | None = None
+    forked_from_title: str | None = None
     modules: list[TeacherCurriculumModuleOut] = Field(default_factory=list)
     module_count: int = 0
     lesson_count: int = 0
@@ -57,6 +65,10 @@ class TeacherCurriculumSummaryOut(BaseModel):
     author: TeacherCurriculumAuthorOut
     is_mine: bool
     can_edit: bool
+    source_movna_slug: str | None = None
+    source_movna_name: str | None = None
+    forked_from_curriculum_id: int | None = None
+    forked_from_title: str | None = None
     module_count: int = 0
     lesson_count: int = 0
     updated_at: datetime

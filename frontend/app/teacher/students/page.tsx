@@ -1,5 +1,6 @@
 'use client'
 
+import { TeacherStudentCardActions } from '@/components/teacher/TeacherStudentCardActions'
 import { TeacherStudentDetailModal } from '@/components/teacher/TeacherStudentDetailModal'
 import { FilterChipBar } from '@/components/shared/FilterChipBar'
 import { StatusBadge } from '@/components/shared/StatusBadge'
@@ -125,7 +126,7 @@ export default function TeacherStudentsPage() {
           <span>Учень</span>
           <span>Рівень</span>
           <span>Баланс</span>
-          <span>Продукти</span>
+          <span>Дії</span>
           <span>Статус</span>
         </div>
 
@@ -135,46 +136,58 @@ export default function TeacherStudentsPage() {
         )}
 
         {!loading && filtered.map(student => (
-          <button
-            key={student.id}
-            type="button"
-            className="teacher-students-row teacher-students-row--clickable"
-            onClick={() => openStudent(student)}
-          >
-            <div className="teacher-students-main">
-              <UserAvatar name={student.full_name} optimateId={student.id} size="lg" kind="student" />
-              <div>
-                <div className="admin-table-title">{student.full_name}</div>
-                <div className="admin-table-sub">
-                  {student.email || student.phone || `ID ${student.id}`}
+          <div key={student.id} className="teacher-students-row">
+            <button
+              type="button"
+              className="teacher-students-row-main teacher-students-row--clickable"
+              onClick={() => openStudent(student)}
+            >
+              <div className="teacher-students-main">
+                <UserAvatar name={student.full_name} optimateId={student.id} size="lg" kind="student" />
+                <div>
+                  <div className="admin-table-title">
+                    {student.full_name}
+                    {student.is_speaking_club_only && (
+                      <span style={{ marginLeft: 6, fontSize: 11, color: 'var(--tx3)' }}>SC</span>
+                    )}
+                  </div>
+                  <div className="admin-table-sub">
+                    {student.is_speaking_club_only
+                      ? 'Speaking Club'
+                      : (student.product_names[0] || student.email || student.phone || `ID ${student.id}`)}
+                  </div>
                 </div>
               </div>
-            </div>
+            </button>
             <div>
               <StatusBadge label={student.skill_level_label || '—'} variant="purple" emoji="📊" />
             </div>
             <div>
               <StatusBadge
-                label={String(student.remaining_lessons)}
+                label={student.is_speaking_club_only ? 'SC' : String(student.remaining_lessons)}
                 variant={
-                  student.remaining_lessons <= 2
-                    ? 'red'
-                    : student.remaining_lessons <= 4
-                      ? 'amber'
-                      : 'green'
+                  student.is_speaking_club_only
+                    ? 'gray'
+                    : student.remaining_lessons <= 2
+                      ? 'red'
+                      : student.remaining_lessons <= 4
+                        ? 'amber'
+                        : 'green'
                 }
-                emoji={student.remaining_lessons <= 2 ? '⚠️' : '💳'}
+                emoji={student.is_speaking_club_only ? '🎤' : student.remaining_lessons <= 2 ? '⚠️' : '💳'}
               />
             </div>
-            <div className="admin-table-sub teacher-students-products">
-              {student.product_names.length
-                ? student.product_names.join(', ')
-                : '—'}
+            <div>
+              <TeacherStudentCardActions
+                studentId={student.id}
+                studentName={student.full_name}
+                compact
+              />
             </div>
             <div>
               <StatusBadge label={student.status_label} status={student.status} />
             </div>
-          </button>
+          </div>
         ))}
       </Card>
 

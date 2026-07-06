@@ -3,7 +3,7 @@
 import { StatusBadge } from '@/components/shared/StatusBadge'
 import { Badge } from '@/components/shared/UI'
 import { AppModalHeader } from '@/components/shared/AppModalHeader'
-import type { CalendarEvent, CalendarParticipant } from '@/lib/calendar-types'
+import { statusAccentColor, type CalendarEvent, type CalendarParticipant } from '@/lib/calendar-types'
 import {
   formatDurationMinutes,
   formatEventDateFull,
@@ -17,7 +17,7 @@ import { TeacherAboutBlock, UserAvatar } from '@/components/shared/UserAvatar'
 import { useLmsProfiles } from '@/hooks/useLmsProfiles'
 import { lessonRequestsApi } from '@/lib/lesson-requests-api'
 import { isEventActive } from '@/lib/optimate-api'
-import { useEffect, useState, type ReactNode } from 'react'
+import { useEffect, useState, type CSSProperties, type ReactNode } from 'react'
 
 function statusBadge(variant?: CalendarEvent['status_variant']) {
   if (!variant) return 'gray' as const
@@ -97,6 +97,8 @@ export function EventDetailModal({
   curriculumStudentId,
   onOpenHomework,
   onRequestCreated,
+  enableTeacherCancel = false,
+  onTeacherCancel,
 }: {
   event: CalendarEvent | null
   onClose: () => void
@@ -110,6 +112,8 @@ export function EventDetailModal({
   curriculumStudentId?: string
   onOpenHomework?: (submissionId: number) => void
   onRequestCreated?: () => void
+  enableTeacherCancel?: boolean
+  onTeacherCancel?: (event: CalendarEvent) => void
 }) {
   const open = event != null
   const active = event ? isEventActive(event.starts_at, event.ends_at) : false
@@ -124,6 +128,17 @@ export function EventDetailModal({
   const canRequest = enableLessonRequests && event
     && event.status_label === 'Заплановано'
     && new Date(event.starts_at).getTime() > Date.now()
+
+  const canTeacherCancel = enableTeacherCancel && event
+    && event.status_label !== 'Проведено'
+    && event.status_label !== 'Скасовано'
+    && new Date(event.ends_at).getTime() > Date.now()
+
+  function handleTeacherCancelClick() {
+    if (!event || !onTeacherCancel) return
+    onTeacherCancel(event)
+    onClose()
+  }
 
   useEffect(() => {
     if (!event) return
@@ -227,16 +242,13 @@ export function EventDetailModal({
   return (
     <div className="cal-modal-overlay" onClick={onClose} role="presentation">
       <div
-        className="cal-modal"
+        className="cal-modal cal-modal--tinted"
+        style={{ '--cal-modal-tint': statusAccentColor(event.status_label, event.status_variant) } as CSSProperties}
         onClick={e => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
         aria-labelledby="cal-modal-title"
       >
-        <div
-          className="cal-modal-accent"
-          style={{ background: event.accent_color ?? 'var(--p)' }}
-        />
         <AppModalHeader
           titleId="cal-modal-title"
           title={event.title}
@@ -272,6 +284,12 @@ export function EventDetailModal({
             <DetailRow label="Тривалість" value={formatDurationMinutes(event.duration_minutes)} />
             <DetailRow label="Формат" value={event.schedule_class_label} />
             <DetailRow label="Тип події" value={event.event_type_label} />
+            {event.cancellation_reason && (
+              <DetailRow label="Причина скасування" value={event.cancellation_reason} />
+            )}
+            {event.cancellation_note && (
+              <DetailRow label="Коментар" value={event.cancellation_note} />
+            )}
             <ParticipantsRow
               label="Викладач"
               participants={teachers}
@@ -310,6 +328,18 @@ export function EventDetailModal({
 
           {enableStudentHomework && onOpenHomework && (
             <StudentEventHomeworkSection event={event} onOpen={onOpenHomework} />
+          )}
+
+          {canTeacherCancel && onTeacherCancel && (
+            <div className="cal-modal-actions">
+              <button
+                type="button"
+                className="btn btn-sm btn-danger"
+                onClick={handleTeacherCancelClick}
+              >
+                Скасувати урок
+              </button>
+            </div>
           )}
 
           {canRequest && !requestSuccess && (

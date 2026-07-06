@@ -13,12 +13,24 @@ class TeacherCurriculum(Base):
     title: Mapped[str] = mapped_column(String(255))
     author_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
     is_public: Mapped[bool] = mapped_column(Boolean, default=False)
+    source_movna_slug: Mapped[str | None] = mapped_column(String(120), nullable=True, index=True)
+    source_movna_sheet_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    source_movna_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    forked_from_curriculum_id: Mapped[int | None] = mapped_column(
+        ForeignKey("teacher_curricula.id", ondelete="SET NULL"), nullable=True
+    )
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
     )
 
     author: Mapped["User"] = relationship(foreign_keys=[author_id], lazy="select")  # noqa: F821
+    forked_from: Mapped["TeacherCurriculum | None"] = relationship(
+        "TeacherCurriculum",
+        remote_side="TeacherCurriculum.id",
+        foreign_keys=[forked_from_curriculum_id],
+        lazy="select",
+    )
     modules: Mapped[list["TeacherCurriculumModule"]] = relationship(
         back_populates="curriculum",
         order_by="TeacherCurriculumModule.sort_order",

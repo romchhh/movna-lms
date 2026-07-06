@@ -22,9 +22,16 @@ function formatSyncedAt(ts: number | null | undefined): string {
 interface CurriculumBrowserProps {
   audience: CurriculumAudience
   canRefresh?: boolean
+  onCustomizeMovna?: (slug: string) => void
+  customizingSlug?: string | null
 }
 
-export function CurriculumBrowser({ audience, canRefresh = false }: CurriculumBrowserProps) {
+export function CurriculumBrowser({
+  audience,
+  canRefresh = false,
+  onCustomizeMovna,
+  customizingSlug = null,
+}: CurriculumBrowserProps) {
   const [programs, setPrograms] = useState<CurriculumProgram[]>([])
   const [selectedSlug, setSelectedSlug] = useState<string | null>(null)
   const [query, setQuery] = useState('')
@@ -134,7 +141,15 @@ export function CurriculumBrowser({ audience, canRefresh = false }: CurriculumBr
 
           <main className="curr-main">
             {selected ? (
-              <CurriculumProgramDetail program={selected} />
+              <CurriculumProgramDetail
+                program={selected}
+                onCustomize={
+                  onCustomizeMovna && audience === 'teacher'
+                    ? () => onCustomizeMovna(selected.slug)
+                    : undefined
+                }
+                customizing={customizingSlug === selected.slug}
+              />
             ) : (
               <Empty label="Оберіть програму зі списку" />
             )}

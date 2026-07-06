@@ -17,6 +17,7 @@ from app.core.config import settings
 from app.services.optimate_labels import (
     COMPLETION_LABELS,
     PRODUCT_TYPE_LABELS,
+    TEACHER_TRANSACTION_TYPE_LABELS,
     TRANSACTION_CREDIT_TYPES,
     TRANSACTION_DEBIT_TYPES,
     TRANSACTION_TYPE_LABELS,
@@ -61,6 +62,28 @@ class ParsedTransaction:
     product_id: Optional[str]
     product_name: Optional[str]
     product_type: Optional[int]
+    is_credit: bool
+
+
+@dataclass
+class ParsedTeacherTransaction:
+    id: str
+    type: int
+    type_label: str
+    amount: float
+    signed_amount: float
+    description: Optional[str]
+    transaction_date: Optional[str]
+    created_at: Optional[str]
+    product_id: Optional[str]
+    product_name: Optional[str]
+    product_type: Optional[int]
+    lesson_id: Optional[str]
+    is_trial: Optional[bool]
+    period_start_date: Optional[str]
+    period_end_date: Optional[str]
+    salary_invoice_id: Optional[str]
+    student_names: tuple[str, ...]
     is_credit: bool
 
 
@@ -173,6 +196,83 @@ class OptimateClient:
                     print(f"[Optimate] GET {path} failed: {exc}")
                 return None
         return None
+
+    async def _post(
+        self,
+        path: str,
+        body: dict[str, Any],
+        verbose: bool = False,
+    ) -> tuple[Optional[dict[str, Any]], int]:
+        if not self.is_configured:
+            return None, 503
+
+        url = f"{self.base_url}{path}"
+        for attempt, force_refresh in enumerate((False, True)):
+            headers = await self._auth_headers(force_refresh=force_refresh)
+            if not headers:
+                return None, 503
+            headers["Content-Type"] = "application/json"
+            try:
+                async with httpx.AsyncClient(timeout=30.0) as client:
+                    response = await client.post(url, json=body, headers=headers)
+                    if response.status_code == 401 and attempt == 0:
+                        _TOKEN_CACHE.pop(self.api_key, None)
+                        continue
+                    if response.status_code >= 400:
+                        if verbose:
+                            print(f"[Optimate] POST {path} failed: {response.status_code} {response.text}")
+                        try:
+                            data = response.json()
+                            return (data if isinstance(data, dict) else None), response.status_code
+                        except Exception:
+                            return None, response.status_code
+                    data = response.json()
+                    return (data if isinstance(data, dict) else {}), response.status_code
+            except httpx.HTTPError as exc:
+                if verbose:
+                    print(f"[Optimate] POST {path} failed: {exc}")
+                return None, 502
+        return None, 502
+
+    async def _delete(
+        self,
+        path: str,
+        verbose: bool = False,
+    ) -> tuple[Optional[dict[str, Any]], int]:
+        if not self.is_configured:
+            return None, 503
+
+        url = f"{self.base_url}{path}"
+        for attempt, force_refresh in enumerate((False, True)):
+            headers = await self._auth_headers(force_refresh=force_refresh)
+            if not headers:
+                return None, 503
+            try:
+                async with httpx.AsyncClient(timeout=30.0) as client:
+                    response = await client.delete(url, headers=headers)
+                    if response.status_code == 401 and attempt == 0:
+                        _TOKEN_CACHE.pop(self.api_key, None)
+                        continue
+                    if response.status_code >= 400:
+                        if verbose:
+                            print(f"[Optimate] DELETE {path} failed: {response.status_code} {response.text}")
+                        try:
+                            data = response.json()
+                            return (data if isinstance(data, dict) else None), response.status_code
+                        except Exception:
+                            return None, response.status_code
+                    if response.content:
+                        try:
+                            data = response.json()
+                            return (data if isinstance(data, dict) else {}), response.status_code
+                        except Exception:
+                            pass
+                    return {}, response.status_code
+            except httpx.HTTPError as exc:
+                if verbose:
+                    print(f"[Optimate] DELETE {path} failed: {exc}")
+                return None, 502
+        return None, 502
 
     async def _patch(
         self,
@@ -531,10 +631,8 @@ class OptimateClient:
                 "used",
             )
 
-            if total <= 0 and (remaining > 0 or used > 0):
-                total = remaining + used
-            if used <= 0 and total > 0 and remaining >= 0:
-                used = max(0.0, total - remaining)
+            from app.services.optimate_parsers import normalize_lesson_counts
+            remaining, total, used = normalize_lesson_counts(remaining, total, used)
 
             product_type = int(product.get("productType") or product.get("type") or 0)
             product_id = str(product.get("productId") or product.get("id") or "")
@@ -1026,6 +1124,136 @@ class OptimateClient:
             return None
         data = raw.get("data") if isinstance(raw.get("data"), dict) else raw
         return data if isinstance(data, dict) else None
+
+    def _parse_teacher_transaction(self, item: dict[str, Any]) -> ParsedTeacherTransaction:
+        tx_type = int(item.get("type") or 0)
+        signed = self._first_number(item, "signedAmount")
+        if not signed:
+            signed = self._first_number(item, "amount")
+            if tx_type == 2 and signed > 0:
+                signed = -signed
+        amount = self._first_number(item, "amount")
+        student_names: list[str] = []
+        for student in item.get("students") or []:
+            if not isinstance(student, dict):
+                continue
+            fn = (student.get("firstName") or "").strip()
+            ln = (student.get("lastName") or "").strip()
+            name = f"{fn} {ln}".strip() or (student.get("name") or "").strip()
+            if name:
+                student_names.append(name)
+
+        return ParsedTeacherTransaction(
+            id=str(item.get("id") or ""),
+            type=tx_type,
+            type_label=TEACHER_TRANSACTION_TYPE_LABELS.get(tx_type, f"Тип {tx_type}"),
+            amount=amount,
+            signed_amount=signed,
+            description=item.get("description"),
+            transaction_date=item.get("transactionDate"),
+            created_at=item.get("createdAt"),
+            product_id=str(item.get("productId")) if item.get("productId") is not None else None,
+            product_name=item.get("productName"),
+            product_type=int(item["productType"]) if item.get("productType") is not None else None,
+            lesson_id=str(item.get("lessonId")) if item.get("lessonId") is not None else None,
+            is_trial=item.get("isTrial") if isinstance(item.get("isTrial"), bool) else None,
+            period_start_date=item.get("periodStartDate"),
+            period_end_date=item.get("periodEndDate"),
+            salary_invoice_id=str(item.get("salaryInvoiceId")) if item.get("salaryInvoiceId") else None,
+            student_names=tuple(student_names),
+            is_credit=signed >= 0,
+        )
+
+    async def get_teacher_transactions(
+        self,
+        teacher_id: str | int,
+        page_number: int = 1,
+        page_size: int = 20,
+        sort_by: str = "transactionDate",
+        sort_order: str = "desc",
+        date_from: Optional[str] = None,
+        date_to: Optional[str] = None,
+        verbose: bool = False,
+    ) -> tuple[list[ParsedTeacherTransaction], int]:
+        params: dict[str, Any] = {
+            "pageNumber": page_number,
+            "pageSize": page_size,
+            "sortBy": sort_by,
+            "sortOrder": sort_order,
+        }
+        if date_from:
+            params["dateFrom"] = date_from
+        if date_to:
+            params["dateTo"] = date_to
+
+        raw = await self._get(
+            f"/api/v1/teachers/{teacher_id}/transactions",
+            params=params,
+            verbose=verbose,
+        )
+        if not raw:
+            return [], 0
+
+        items = raw.get("data") or []
+        total = int(raw.get("total") or 0)
+        if not isinstance(items, list):
+            return [], total
+        return [self._parse_teacher_transaction(item) for item in items if isinstance(item, dict)], total
+
+    async def create_event(
+        self,
+        *,
+        teacher_id: str | int,
+        student_ids: list[int],
+        product_id: int,
+        starts_at: str,
+        duration: int = 60,
+        event_type: int = 1,
+        verbose: bool = False,
+    ) -> tuple[Optional[dict[str, Any]], int]:
+        body = {
+            "eventType": event_type,
+            "teacherIds": [int(teacher_id)],
+            "studentIds": student_ids,
+            "productId": int(product_id),
+            "startsAt": starts_at,
+            "duration": int(duration),
+        }
+        return await self._post("/api/v1/events", body, verbose=verbose)
+
+    async def cancel_event(
+        self,
+        event_id: str | int,
+        *,
+        verbose: bool = False,
+    ) -> tuple[Optional[dict[str, Any]], int]:
+        """Скасувати урок у Optimate.
+
+        Заплановані уроки: DELETE (PATCH isCompleted=false повертає 200, але не змінює подію).
+        Проведені уроки: PATCH isCompleted=false, якщо DELETE недоступний.
+        """
+        deleted, delete_status = await self._delete(
+            f"/api/v1/events/{event_id}",
+            verbose=verbose,
+        )
+        if delete_status == 200:
+            return deleted, delete_status
+
+        updated, patch_status = await self._patch(
+            f"/api/v1/events/{event_id}",
+            {"isCompleted": False},
+            verbose=verbose,
+        )
+        if patch_status != 200:
+            return updated, patch_status
+
+        raw = await self._get(f"/api/v1/events/{event_id}", verbose=verbose)
+        if isinstance(raw, dict):
+            data = raw.get("data") if isinstance(raw.get("data"), dict) else raw
+            if isinstance(data, dict) and data.get("isCompleted") is False:
+                return updated, 200
+
+        return None, delete_status if delete_status >= 400 else 502
 
     async def get_group_students(
         self,

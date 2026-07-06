@@ -33,6 +33,8 @@ export interface CalendarEvent {
   event_type_label?: string
   schedule_class?: string
   schedule_class_label?: string
+  cancellation_reason?: string
+  cancellation_note?: string
 }
 
 export interface CalendarEventInput {
@@ -53,12 +55,31 @@ export interface CalendarEventInput {
   is_completed?: boolean | null
   duration?: number
   event_type_label?: string
+  cancellation_reason?: string | null
+  cancellation_note?: string | null
 }
 
 const STATUS_MAP: Record<string, CalendarStatusVariant> = {
   'Проведено': 'green',
   'Скасовано': 'red',
-  'Заплановано': 'gray',
+  'Заплановано': 'purple',
+}
+
+export function statusAccentColor(
+  label?: string,
+  variant?: CalendarStatusVariant,
+): string {
+  const resolved = variant ?? completionVariant(label)
+  switch (resolved) {
+    case 'green':
+      return 'var(--gd)'
+    case 'red':
+      return 'var(--rd)'
+    case 'purple':
+      return 'var(--p)'
+    default:
+      return 'var(--p)'
+  }
 }
 
 export const SCHEDULE_CLASS_COLORS: Record<string, string> = {
@@ -173,10 +194,9 @@ export function toCalendarEvent(raw: CalendarEventInput): CalendarEvent {
   ].filter(Boolean)
 
   const scheduleClass = resolveScheduleClass(raw)
-  const accent =
-    SCHEDULE_CLASS_COLORS[scheduleClass] ||
-    (raw.product_type != null && PRODUCT_COLORS[raw.product_type]) ||
-    'var(--p)'
+  const status_label = raw.completion_label
+  const status_variant = completionVariant(status_label)
+  const accent = statusAccentColor(status_label, status_variant)
 
   return {
     id: raw.id,
@@ -184,8 +204,8 @@ export function toCalendarEvent(raw: CalendarEventInput): CalendarEvent {
     ends_at: raw.ends_at,
     title: raw.product_name || raw.product_type_label || 'Урок',
     subtitle: subtitleParts.join(' · ') || undefined,
-    status_label: raw.completion_label,
-    status_variant: completionVariant(raw.completion_label),
+    status_label,
+    status_variant,
     accent_color: accent,
     is_trial: raw.is_trial,
     product_type_label: raw.product_type_label ?? undefined,
@@ -201,6 +221,8 @@ export function toCalendarEvent(raw: CalendarEventInput): CalendarEvent {
     schedule_class: scheduleClass,
     schedule_class_label: SCHEDULE_CLASS_LABELS[scheduleClass],
     tags: [SCHEDULE_CLASS_SHORT[scheduleClass] ?? scheduleClass],
+    cancellation_reason: raw.cancellation_reason ?? undefined,
+    cancellation_note: raw.cancellation_note ?? undefined,
   }
 }
 

@@ -1,4 +1,5 @@
 from datetime import datetime, timezone
+from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -8,11 +9,17 @@ from app.core.security import require_role
 from app.models.user import User, UserRole
 from app.schemas.optimate import (
     CacheMeta,
+    EventCancellationOut,
     EventOut,
+    LessonCancellationReasonOut,
     PaginatedEventsOut,
     PaginatedTeacherStudentsOut,
+    PaginatedTeacherTransactionsOut,
     ScheduleDayOut,
     ScheduleSlotOut,
+    TeacherEventActionOut,
+    TeacherEventCancelIn,
+    TeacherEventCreateIn,
     TeacherGroupOut,
     TeacherGroupStudentOut,
     TeacherGroupsResponse,
@@ -23,8 +30,11 @@ from app.schemas.optimate import (
     TeacherStudentDetailResponse,
     TeacherLessonStatsOut,
     TeacherStudentOut,
+    TeacherTransactionOut,
+    TeacherTransactionsSummaryOut,
 )
 from app.services.optimate import get_optimate_client
+from app.services.optimate_labels import LESSON_CANCELLATION_REASONS
 from app.services.optimate_admin_labels import PROFILE_INCLUDE
 from app.services.optimate_cache import (
     get_cached_teacher_events,
@@ -33,8 +43,16 @@ from app.services.optimate_cache import (
     get_cached_teacher_schedules,
     get_cached_teacher_student_detail,
     get_cached_teacher_students,
+    get_cached_teacher_transactions,
+    get_cached_teacher_transactions_summary,
     invalidate_admin_teacher_detail,
     invalidate_teacher_cache,
+)
+from app.services.teacher_event_sync import (
+    get_cancellations_map,
+    resolve_student_product_id,
+    save_event_cancellation,
+    teacher_can_access_student,
 )
 from app.services.optimate_profile import (
     build_teacher_patch,
@@ -70,7 +88,13 @@ async def _resolve_teacher_id(user: User, db: AsyncSession) -> str:
     return str(contact.id)
 
 
-def _event_out(item) -> EventOut:
+def _event_out(item, cancellation=None) -> EventOut:
+    completion_label = item.completion_label
+    is_completed = item.is_completed
+    if cancellation and completion_label == "Заплановано":
+        completion_label = "Скасовано"
+        is_completed = False
+
     return EventOut(
         id=item.id,
         event_type=item.event_type,
@@ -83,13 +107,38 @@ def _event_out(item) -> EventOut:
         product_type_label=item.product_type_label,
         teacher_name=item.teacher_name,
         is_trial=item.is_trial,
-        is_completed=item.is_completed,
-        completion_label=item.completion_label,
+        is_completed=is_completed,
+        completion_label=completion_label,
         schedule_class=item.schedule_class,
         student_names=list(item.student_names),
         student_ids=list(getattr(item, "student_ids", []) or []),
         teacher_names=list(getattr(item, "teacher_names", []) or []),
         teacher_ids=list(getattr(item, "teacher_ids", []) or []),
+        cancellation_reason=cancellation.reason_label if cancellation else None,
+        cancellation_note=cancellation.note if cancellation else None,
+    )
+
+
+def _teacher_transaction_out(item) -> TeacherTransactionOut:
+    return TeacherTransactionOut(
+        id=item.id,
+        type=item.type,
+        type_label=item.type_label,
+        amount=item.amount,
+        signed_amount=item.signed_amount,
+        description=item.description,
+        transaction_date=item.transaction_date,
+        created_at=item.created_at,
+        product_id=item.product_id,
+        product_name=item.product_name,
+        product_type=item.product_type,
+        lesson_id=item.lesson_id,
+        is_trial=item.is_trial,
+        period_start_date=item.period_start_date,
+        period_end_date=item.period_end_date,
+        salary_invoice_id=item.salary_invoice_id,
+        student_names=list(item.student_names),
+        is_credit=item.is_credit,
     )
 
 
@@ -193,7 +242,7 @@ async def teacher_schedules(
 
 @router.get("/events", response_model=PaginatedEventsOut)
 async def teacher_events(
-    days_back: int = Query(7, ge=0, le=90),
+    days_back: int = Query(7, ge=0, le=365),
     days_forward: int = Query(30, ge=1, le=180),
     refresh: bool = Query(False),
     db: AsyncSession = Depends(get_db),
@@ -210,11 +259,154 @@ async def teacher_events(
         days_forward=days_forward,
         force_refresh=refresh,
     )
+    cancel_map = await get_cancellations_map(db, [e.id for e in items])
     return PaginatedEventsOut(
-        data=[_event_out(e) for e in items],
+        data=[_event_out(e, cancel_map.get(e.id)) for e in items],
         total=total,
         date_from=date_from,
         date_to=date_to,
+        cache=cache_meta(cached_at, from_cache),
+    )
+
+
+@router.get("/cancellation-reasons", response_model=list[LessonCancellationReasonOut])
+async def lesson_cancellation_reasons(
+    _: User = Depends(require_role(UserRole.TEACHER)),
+):
+    return [LessonCancellationReasonOut(**item) for item in LESSON_CANCELLATION_REASONS]
+
+
+@router.post("/events", response_model=TeacherEventActionOut, status_code=201)
+async def create_teacher_event(
+    body: TeacherEventCreateIn,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_role(UserRole.TEACHER)),
+):
+    ensure_optimate_configured()
+    client = get_optimate_client()
+    teacher_id = await _resolve_teacher_id(current_user, db)
+
+    if not await teacher_can_access_student(client, teacher_id, body.student_id):
+        raise HTTPException(status_code=404, detail="Учня не знайдено або немає доступу")
+
+    raw = await client.get_student_by_id(
+        body.student_id,
+        include="products,products.financial",
+    )
+    student_data = raw.get("data") if isinstance(raw, dict) and isinstance(raw.get("data"), dict) else raw
+    if not isinstance(student_data, dict):
+        raise HTTPException(status_code=404, detail="Не вдалося завантажити дані учня")
+
+    product_id = resolve_student_product_id(student_data, body.product_id)
+    if not product_id:
+        raise HTTPException(status_code=400, detail="Не знайдено активний продукт для уроку")
+
+    try:
+        student_int = int(body.student_id)
+    except (TypeError, ValueError):
+        raise HTTPException(status_code=400, detail="Невірний ID учня")
+
+    if body.duration < 15 or body.duration > 240:
+        raise HTTPException(status_code=400, detail="Тривалість уроку має бути від 15 до 240 хв")
+
+    created, status_code = await client.create_event(
+        teacher_id=teacher_id,
+        student_ids=[student_int],
+        product_id=product_id,
+        starts_at=body.starts_at,
+        duration=body.duration,
+    )
+    if status_code >= 400 or not created:
+        message = "Не вдалося створити урок в Optimate"
+        if isinstance(created, dict):
+            message = created.get("message") or message
+        raise HTTPException(status_code=502 if status_code >= 500 else 400, detail=message)
+
+    event_data = created.get("data") if isinstance(created.get("data"), dict) else created
+    event_id = str(event_data.get("id") or "")
+    invalidate_teacher_cache(teacher_id)
+    return TeacherEventActionOut(ok=True, event_id=event_id, message="Урок створено в Optimate")
+
+
+@router.post("/events/{event_id}/cancel", response_model=TeacherEventActionOut)
+async def cancel_teacher_event(
+    event_id: str,
+    body: TeacherEventCancelIn,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_role(UserRole.TEACHER)),
+):
+    ensure_optimate_configured()
+    if not any(item["code"] == body.reason_code for item in LESSON_CANCELLATION_REASONS):
+        raise HTTPException(status_code=400, detail="Невідома причина скасування")
+
+    client = get_optimate_client()
+    teacher_id = await _resolve_teacher_id(current_user, db)
+    _, status_code = await client.cancel_event(event_id)
+    if status_code >= 400:
+        raise HTTPException(status_code=502, detail="Не вдалося скасувати урок в Optimate")
+
+    await save_event_cancellation(
+        db,
+        event_id=event_id,
+        teacher_id=teacher_id,
+        reason_code=body.reason_code,
+        note=body.note,
+    )
+    invalidate_teacher_cache(teacher_id)
+    return TeacherEventActionOut(ok=True, event_id=event_id, message="Урок скасовано")
+
+
+@router.get("/events/{event_id}/cancellation", response_model=EventCancellationOut)
+async def get_event_cancellation(
+    event_id: str,
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(require_role(UserRole.TEACHER)),
+):
+    cancel_map = await get_cancellations_map(db, [event_id])
+    row = cancel_map.get(event_id)
+    if not row:
+        raise HTTPException(status_code=404, detail="Причину скасування не знайдено")
+    return EventCancellationOut(
+        optimate_event_id=row.optimate_event_id,
+        reason_code=row.reason_code,
+        reason_label=row.reason_label,
+        note=row.note or "",
+        created_at=row.created_at.isoformat() if row.created_at else None,
+    )
+
+
+@router.get("/transactions", response_model=PaginatedTeacherTransactionsOut)
+async def teacher_transactions(
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
+    date_from: Optional[str] = Query(None),
+    date_to: Optional[str] = Query(None),
+    refresh: bool = Query(False),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_role(UserRole.TEACHER)),
+):
+    ensure_optimate_configured()
+    teacher_id = await _resolve_teacher_id(current_user, db)
+    (items, total), cached_at, from_cache = await get_cached_teacher_transactions(
+        teacher_id,
+        page=page,
+        page_size=page_size,
+        date_from=date_from,
+        date_to=date_to,
+        force_refresh=refresh,
+    )
+    summary_raw, _, _ = await get_cached_teacher_transactions_summary(
+        teacher_id,
+        date_from=date_from,
+        date_to=date_to,
+        force_refresh=refresh,
+    )
+    return PaginatedTeacherTransactionsOut(
+        data=[_teacher_transaction_out(t) for t in items],
+        total=total,
+        page=page,
+        page_size=page_size,
+        summary=TeacherTransactionsSummaryOut(**summary_raw),
         cache=cache_meta(cached_at, from_cache),
     )
 
@@ -223,6 +415,8 @@ async def teacher_events(
 async def teacher_lesson_stats(
     days_back: int = Query(365, ge=30, le=730),
     days_forward: int = Query(90, ge=7, le=180),
+    year: Optional[int] = Query(None, ge=2020, le=2100),
+    month: Optional[int] = Query(None, ge=1, le=12),
     refresh: bool = Query(False),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_role(UserRole.TEACHER)),
@@ -236,6 +430,8 @@ async def teacher_lesson_stats(
         teacher_id,
         days_back=days_back,
         days_forward=days_forward,
+        stats_year=year,
+        stats_month=month,
         force_refresh=refresh,
     )
     return TeacherLessonStatsOut(**stats, cache=cache_meta(cached_at, from_cache))
@@ -262,8 +458,12 @@ async def teacher_students(
         search.strip() or None,
         force_refresh=refresh,
     )
+    parsed_items = [parse_teacher_student_item(item) for item in items]
     return PaginatedTeacherStudentsOut(
-        data=[TeacherStudentOut(**parse_teacher_student_item(item)) for item in items],
+        data=[
+            TeacherStudentOut(**parsed, products=parsed.get("products_summary") or [])
+            for parsed in parsed_items
+        ],
         total=total,
         page=page,
         page_size=page_size,

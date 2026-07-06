@@ -28,9 +28,26 @@ def _month_bounds(year: int, month: int) -> tuple[date, date]:
     return start, end
 
 
+def _prev_month(year: int, month: int) -> tuple[int, int]:
+    if month == 1:
+        return year - 1, 12
+    return year, month - 1
+
+
 def _week_bounds_monday(anchor: date) -> tuple[date, date]:
     start = anchor - timedelta(days=anchor.weekday())
     return start, start + timedelta(days=6)
+
+
+def _weeks_in_month(year: int, month: int) -> list[tuple[date, date]]:
+    month_start, month_end = _month_bounds(year, month)
+    week_start = month_start - timedelta(days=month_start.weekday())
+    weeks: list[tuple[date, date]] = []
+    while week_start <= month_end:
+        week_end = week_start + timedelta(days=6)
+        weeks.append((week_start, week_end))
+        week_start += timedelta(days=7)
+    return weeks
 
 
 async def fetch_all_teacher_events(
@@ -67,18 +84,26 @@ def compute_teacher_lesson_stats(
     *,
     days_back: int = DEFAULT_DAYS_BACK,
     days_forward: int = DEFAULT_DAYS_FORWARD,
+    stats_year: Optional[int] = None,
+    stats_month: Optional[int] = None,
     now: Optional[datetime] = None,
 ) -> dict[str, Any]:
     anchor = (now or datetime.now(KYIV)).astimezone(KYIV)
     today = anchor.date()
 
-    this_month_start, this_month_end = _month_bounds(today.year, today.month)
-    if today.month == 1:
-        last_month_start, last_month_end = _month_bounds(today.year - 1, 12)
-    else:
-        last_month_start, last_month_end = _month_bounds(today.year, today.month - 1)
+    year = stats_year if stats_year is not None else today.year
+    month = stats_month if stats_month is not None else today.month
+    is_current_month = year == today.year and month == today.month
 
-    week_start, week_end = _week_bounds_monday(today)
+    stats_month_start, stats_month_end = _month_bounds(year, month)
+    prev_year, prev_month = _prev_month(year, month)
+    last_month_start, last_month_end = _month_bounds(prev_year, prev_month)
+
+    if is_current_month:
+        week_start, week_end = _week_bounds_monday(today)
+    else:
+        weeks = _weeks_in_month(year, month)
+        week_start, week_end = weeks[-1] if weeks else (stats_month_start, stats_month_end)
 
     completed_in_period = 0
     completed_this_month = 0
@@ -92,6 +117,7 @@ def compute_teacher_lesson_stats(
     hours_this_month = 0.0
     trial_completed_month = 0
     unique_students_month: set[str] = set()
+    unique_students_speaking_club_month: set[str] = set()
     format_completed_month: dict[str, int] = {
         "individual": 0, "group": 0, "pair": 0, "speaking_club": 0,
     }
@@ -110,19 +136,24 @@ def compute_teacher_lesson_stats(
         if local_d is None:
             continue
         key = local_d.isoformat()
+        schedule_class = event.schedule_class or "individual"
 
         if event.is_completed is True:
             completed_in_period += 1
-            if this_month_start <= local_d <= this_month_end:
+            if stats_month_start <= local_d <= stats_month_end:
                 completed_this_month += 1
                 hours_this_month += max(event.duration, 0) / 60.0
-                fmt = event.schedule_class or "individual"
+                fmt = schedule_class
                 format_completed_month[fmt] = format_completed_month.get(fmt, 0) + 1
                 weekday_completed[local_d.weekday()] += 1
                 if event.is_trial:
                     trial_completed_month += 1
                 for sid in event.student_ids:
-                    if sid:
+                    if not sid:
+                        continue
+                    if schedule_class == "speaking_club":
+                        unique_students_speaking_club_month.add(sid)
+                    else:
                         unique_students_month.add(sid)
             if last_month_start <= local_d <= last_month_end:
                 completed_last_month += 1
@@ -131,20 +162,20 @@ def compute_teacher_lesson_stats(
                 if key in day_counts:
                     day_counts[key]["completed"] += 1
                     day_counts[key]["total"] += 1
-            if local_d == today:
+            if is_current_month and local_d == today:
                 completed_today += 1
         elif event.is_completed is False:
-            if this_month_start <= local_d <= this_month_end:
+            if stats_month_start <= local_d <= stats_month_end:
                 cancelled_this_month += 1
         else:
-            if this_month_start <= local_d <= this_month_end:
+            if stats_month_start <= local_d <= stats_month_end:
                 planned_this_month += 1
             if week_start <= local_d <= week_end:
                 planned_this_week += 1
                 if key in day_counts:
                     day_counts[key]["planned"] += 1
                     day_counts[key]["total"] += 1
-            if local_d >= today:
+            if is_current_month and local_d >= today:
                 planned_upcoming += 1
 
     week_activity = [
@@ -158,8 +189,8 @@ def compute_teacher_lesson_stats(
         for i in range(7)
     ]
 
-    weeks_in_month = max(1, (today - this_month_start).days // 7 + 1)
-    avg_lessons_per_week = round(completed_this_month / weeks_in_month, 1)
+    weeks_in_stats_month = max(1, len(_weeks_in_month(year, month)))
+    avg_lessons_per_week = round(completed_this_month / weeks_in_stats_month, 1)
     busiest_weekday_label = "—"
     if weekday_completed:
         busiest_weekday_label = UK_DAY_LABELS[weekday_completed.most_common(1)[0][0]]
@@ -173,7 +204,10 @@ def compute_teacher_lesson_stats(
         month_change_pct = 0
 
     return {
-        "month_label": month_label_for(today),
+        "month_label": month_label_for(date(year, month, 1)),
+        "stats_year": year,
+        "stats_month": month,
+        "is_current_month": is_current_month,
         "days_back": days_back,
         "days_forward": days_forward,
         "completed_in_period": completed_in_period,
@@ -189,8 +223,49 @@ def compute_teacher_lesson_stats(
         "month_change_pct": month_change_pct,
         "week_activity": week_activity,
         "unique_students_month": len(unique_students_month),
+        "unique_students_speaking_club_month": len(unique_students_speaking_club_month),
         "trial_lessons_month": trial_completed_month,
         "format_breakdown_month": format_completed_month,
         "busiest_weekday_label": busiest_weekday_label,
         "avg_lessons_per_week": avg_lessons_per_week,
+    }
+
+
+async def count_teacher_student_buckets(teacher_id: str) -> dict[str, int]:
+    """Підрахунок учнів: всього, лише Speaking Club, з регулярними уроками."""
+    from app.services.optimate_parsers import parse_teacher_student_item
+
+    client = get_optimate_client()
+    sc_only = 0
+    regular = 0
+    total = 0
+    fetched = 0
+    page = 1
+    page_size = 100
+
+    while page <= 20:
+        items, reported_total = await client.list_teacher_students(
+            teacher_id,
+            page_number=page,
+            page_size=page_size,
+        )
+        if page == 1:
+            total = reported_total
+        if not items:
+            break
+        for item in items:
+            parsed = parse_teacher_student_item(item)
+            if parsed.get("is_speaking_club_only"):
+                sc_only += 1
+            else:
+                regular += 1
+        fetched += len(items)
+        if fetched >= total:
+            break
+        page += 1
+
+    return {
+        "total_students": total,
+        "students_speaking_club_only": sc_only,
+        "students_with_regular_lessons": regular,
     }

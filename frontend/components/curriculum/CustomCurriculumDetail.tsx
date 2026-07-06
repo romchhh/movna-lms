@@ -12,6 +12,9 @@ interface CustomCurriculumDetailProps {
   program: TeacherCurriculumProgram
   onEdit?: () => void
   onDelete?: () => void
+  onFork?: () => void
+  onTogglePublic?: (next: boolean) => void
+  forking?: boolean
   deleting?: boolean
 }
 
@@ -29,6 +32,9 @@ export function CustomCurriculumDetail({
   program,
   onEdit,
   onDelete,
+  onFork,
+  onTogglePublic,
+  forking,
   deleting,
 }: CustomCurriculumDetailProps) {
   const [openModules, setOpenModules] = useState<Set<number>>(
@@ -54,9 +60,12 @@ export function CustomCurriculumDetail({
             ) : (
               <Badge variant="purple">Колега</Badge>
             )}
-            {program.is_public && <Badge variant="green">Видима для всіх</Badge>}
+            {program.is_public && <Badge variant="green">Публічна</Badge>}
             {!program.is_public && program.is_mine && (
-              <Badge variant="gray">Лише для мене</Badge>
+              <Badge variant="gray">Приватна</Badge>
+            )}
+            {program.source_movna_name && (
+              <Badge variant="amber">Копія Movna</Badge>
             )}
           </div>
           <h2 className="curr-program-title">{program.title}</h2>
@@ -64,6 +73,18 @@ export function CustomCurriculumDetail({
             Автор: <strong>{program.author.full_name}</strong>
             {' · '}
             оновлено {formatDate(program.updated_at)}
+            {program.source_movna_name && (
+              <>
+                {' · '}
+                на основі <strong>{program.source_movna_name}</strong>
+              </>
+            )}
+            {program.forked_from_title && (
+              <>
+                {' · '}
+                копія <strong>{program.forked_from_title}</strong>
+              </>
+            )}
           </p>
         </div>
         <div className="curr-program-hero-side">
@@ -79,6 +100,15 @@ export function CustomCurriculumDetail({
           </div>
           {program.can_edit && (
             <div className="curr-custom-actions">
+              {onTogglePublic && (
+                <button
+                  type="button"
+                  className={`btn btn-sm ${program.is_public ? 'btn-secondary' : 'btn-teal'}`}
+                  onClick={() => onTogglePublic(!program.is_public)}
+                >
+                  {program.is_public ? 'Зробити приватною' : 'Зробити публічною'}
+                </button>
+              )}
               {onEdit && (
                 <button type="button" className="btn btn-sm btn-teal" onClick={onEdit}>
                   Редагувати
@@ -94,6 +124,18 @@ export function CustomCurriculumDetail({
                   {deleting ? 'Видалення…' : 'Видалити'}
                 </button>
               )}
+            </div>
+          )}
+          {!program.is_mine && onFork && (
+            <div className="curr-custom-actions">
+              <button
+                type="button"
+                className="btn btn-sm btn-teal"
+                onClick={onFork}
+                disabled={forking}
+              >
+                {forking ? 'Копіювання…' : 'Копіювати до себе'}
+              </button>
             </div>
           )}
         </div>

@@ -18,6 +18,15 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 type ViewMode = 'detail' | 'create' | 'edit'
 type FilterTab = 'all' | 'mine' | 'shared'
 
+interface TeacherCustomCurriculumHubProps {
+  openRequest?: {
+    id: number
+    mode: 'edit' | 'detail'
+    program?: TeacherCurriculumProgram
+  } | null
+  onOpenRequestConsumed?: () => void
+}
+
 function formatUpdated(iso: string): string {
   return new Date(iso).toLocaleString('uk-UA', {
     day: 'numeric',
@@ -27,7 +36,10 @@ function formatUpdated(iso: string): string {
   })
 }
 
-export function TeacherCustomCurriculumHub() {
+export function TeacherCustomCurriculumHub({
+  openRequest = null,
+  onOpenRequestConsumed,
+}: TeacherCustomCurriculumHubProps) {
   const [programs, setPrograms] = useState<TeacherCurriculumSummary[]>([])
   const [selectedId, setSelectedId] = useState<number | null>(null)
   const [detail, setDetail] = useState<TeacherCurriculumProgram | null>(null)
@@ -41,6 +53,7 @@ export function TeacherCustomCurriculumHub() {
   const [error, setError] = useState('')
   const [saveError, setSaveError] = useState('')
   const [deleteTarget, setDeleteTarget] = useState<number | null>(null)
+  const [forking, setForking] = useState(false)
 
   const [editorState, setEditorState] = useState(() => emptyProgramToEditor())
 
@@ -66,6 +79,19 @@ export function TeacherCustomCurriculumHub() {
     loadList()
   }, [loadList])
 
+  useEffect(() => {
+    if (!openRequest) return
+    setSelectedId(openRequest.id)
+    setMode(openRequest.mode)
+    if (openRequest.program) {
+      setDetail(openRequest.program)
+      if (openRequest.mode === 'edit') {
+        setEditorState(programToEditor(openRequest.program))
+      }
+    }
+    onOpenRequestConsumed?.()
+  }, [openRequest, onOpenRequestConsumed])
+
   const loadDetail = useCallback(async (id: number) => {
     setDetailLoading(true)
     setError('')
@@ -81,12 +107,19 @@ export function TeacherCustomCurriculumHub() {
   }, [])
 
   useEffect(() => {
-    if (mode !== 'detail' || !selectedId) {
+    if ((mode !== 'detail' && mode !== 'edit') || !selectedId) {
       if (!selectedId) setDetail(null)
       return
     }
+    if (mode === 'edit' && detail?.id === selectedId) return
     loadDetail(selectedId)
-  }, [selectedId, mode, loadDetail])
+  }, [selectedId, mode, loadDetail, detail?.id])
+
+  useEffect(() => {
+    if (mode === 'edit' && selectedId && detail?.id === selectedId) {
+      setEditorState(programToEditor(detail))
+    }
+  }, [mode, selectedId, detail])
 
   const filtered = useMemo(() => {
     let list = programs
@@ -163,9 +196,54 @@ export function TeacherCustomCurriculumHub() {
     }
   }
 
+  async function handleFork(programId: number) {
+    setForking(true)
+    setError('')
+    try {
+      const forked = await teacherCurriculumApi.forkFromProgram(programId)
+      await loadList()
+      setSelectedId(forked.id)
+      setDetail(forked)
+      setMode('edit')
+      setEditorState(programToEditor(forked))
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Помилка копіювання')
+    } finally {
+      setForking(false)
+    }
+  }
+
+  async function handleTogglePublic(next: boolean) {
+    if (!detail || !detail.can_edit) return
+    setSaving(true)
+    setError('')
+    try {
+      const payload: TeacherCurriculumWrite = {
+        title: detail.title,
+        is_public: next,
+        modules: detail.modules.map(m => ({
+          title: m.title,
+          lessons: m.lessons.map(l => ({
+            number: l.number,
+            lesson_type: l.lesson_type,
+            topic: l.topic,
+            student_activities: l.student_activities,
+          })),
+        })),
+      }
+      const updated = await teacherCurriculumApi.update(detail.id, payload)
+      setDetail(updated)
+      await loadList()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Помилка оновлення')
+    } finally {
+      setSaving(false)
+    }
+  }
+
   const sub = loading
     ? 'Завантаження…'
-    : `${programs.length} програм · мої та спільні`
+    : `${programs.length} програм · мої, публічні та копії з Movna`
 
   return (
     <div className="curr-hub curr-hub--teacher">
@@ -186,7 +264,7 @@ export function TeacherCustomCurriculumHub() {
               {([
                 ['all', 'Усі'],
                 ['mine', 'Мої'],
-                ['shared', 'Колег'],
+                ['shared', 'Публічні'],
               ] as const).map(([key, label]) => (
                 <button
                   key={key}
@@ -223,7 +301,8 @@ export function TeacherCustomCurriculumHub() {
                   </span>
                   <span className="curr-program-pick-author">
                     {program.is_mine ? 'Моя' : program.author.full_name}
-                    {program.is_public ? ' · спільна' : ''}
+                    {program.is_public ? ' · публічна' : ''}
+                    {program.source_movna_name ? ` · з Movna` : ''}
                   </span>
                   <span className="curr-program-pick-date">{formatUpdated(program.updated_at)}</span>
                 </button>
@@ -257,6 +336,9 @@ export function TeacherCustomCurriculumHub() {
                 program={detail}
                 onEdit={detail.can_edit ? startEdit : undefined}
                 onDelete={detail.can_edit ? () => setDeleteTarget(detail.id) : undefined}
+                onFork={!detail.is_mine ? () => void handleFork(detail.id) : undefined}
+                onTogglePublic={detail.can_edit ? handleTogglePublic : undefined}
+                forking={forking}
                 deleting={deleting}
               />
             ) : (

@@ -135,8 +135,8 @@ export function TeacherCurriculumEditor({
             onChange={e => setIsPublic(e.target.checked)}
           />
           <span className="curr-editor-visibility-text">
-            <strong>Зробити видимою для всіх</strong>
-            <small>Інші викладачі зможуть переглядати програму та бачитимуть ваше авторство</small>
+            <strong>Публічна програма</strong>
+            <small>Інші викладачі зможуть переглядати та копіювати програму до себе</small>
           </span>
         </label>
 

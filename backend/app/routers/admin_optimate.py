@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta, timezone
+from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import func, select
@@ -275,6 +276,8 @@ async def get_teacher_lesson_stats(
     teacher_id: str,
     days_back: int = Query(365, ge=30, le=730),
     days_forward: int = Query(90, ge=7, le=180),
+    year: Optional[int] = Query(None, ge=2020, le=2100),
+    month: Optional[int] = Query(None, ge=1, le=12),
     refresh: bool = Query(False),
     _: User = Depends(require_role(UserRole.ADMIN)),
 ):
@@ -283,6 +286,8 @@ async def get_teacher_lesson_stats(
         teacher_id,
         days_back=days_back,
         days_forward=days_forward,
+        stats_year=year,
+        stats_month=month,
         force_refresh=refresh,
     )
     return TeacherLessonStatsOut(**stats, cache=cache_meta(cached_at, from_cache))

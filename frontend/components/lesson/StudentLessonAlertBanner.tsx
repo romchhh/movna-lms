@@ -103,10 +103,10 @@ export function StudentLessonAlertBanner() {
                 rel="noopener noreferrer"
                 className="btn btn-teal lesson-alert-btn"
               >
-                Приєднатися в Zoom
+                Приєднатися до уроку
               </a>
             ) : (
-              <span className="lesson-alert-missing">Посилання Zoom ще не додано викладачем</span>
+              <span className="lesson-alert-missing">Посилання на урок ще не додано викладачем</span>
             )}
 
             {hasMiro ? (

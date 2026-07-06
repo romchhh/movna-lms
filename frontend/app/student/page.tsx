@@ -1,6 +1,7 @@
 'use client'
 
 import { EventsCalendar } from '@/components/calendar/EventsCalendar'
+import { StudentLearningResourcesCard } from '@/components/student/StudentLearningResourcesCard'
 import { StudentCurriculumSummary } from '@/components/curriculum/StudentCurriculumSummary'
 import { HomeworkAlert } from '@/components/homework/HomeworkAlert'
 import { HomeworkStudentModal } from '@/components/homework/HomeworkStudentModal'
@@ -49,6 +50,8 @@ export default function StudentDashboard() {
 
   const nextEvent = overview?.upcoming_events[0]
   const totalRemaining = overview?.total_lessons_remaining ?? 0
+  const totalUsed = overview?.total_lessons_used ?? 0
+  const totalPurchased = overview?.total_lessons_purchased ?? 0
 
   return (
     <div className="dash-home">
@@ -62,14 +65,19 @@ export default function StudentDashboard() {
 
       <div className="g4 dash-stats">
         <StatCard
-          label="Залишок уроків"
+          label="Залишок"
           value={loading ? '…' : totalRemaining}
-          sub="по всіх продуктах"
+          sub="уроків доступно"
         />
         <StatCard
-          label="Продуктів"
-          value={loading ? '…' : overview?.balances.length ?? 0}
-          sub="активних балансів"
+          label="Використано"
+          value={loading ? '…' : totalUsed}
+          sub="уроків за весь час"
+        />
+        <StatCard
+          label="Куплено"
+          value={loading ? '…' : totalPurchased}
+          sub="уроків за весь час"
         />
         <StatCard
           label="Найближче заняття"
@@ -93,8 +101,11 @@ export default function StudentDashboard() {
           )}
           {overview?.balances.map(product => {
             const accent = PRODUCT_ACCENT[product.product_type] ?? PRODUCT_ACCENT[1]
-            const pct = product.lessons_total > 0
-              ? (product.lessons_remaining / product.lessons_total) * 100
+            const purchased = product.lessons_total > 0
+              ? product.lessons_total
+              : product.lessons_remaining + product.lessons_used
+            const pct = purchased > 0
+              ? (product.lessons_remaining / purchased) * 100
               : 0
             return (
               <div key={product.product_id || product.product_name} className="optimate-dash-balance-row">
@@ -102,7 +113,9 @@ export default function StudentDashboard() {
                   <div style={{ fontSize: 14, fontWeight: 600 }}>{product.product_name}</div>
                   <div style={{ fontSize: 12, color: 'var(--tx2)', marginTop: 2 }}>
                     <Badge variant={accent.badge}>{product.product_type_label}</Badge>
-                    {' '}{product.lessons_remaining} з {product.lessons_total} залишилось
+                    {' '}
+                    Залишок {product.lessons_remaining} · Використано {product.lessons_used}
+                    {purchased > 0 ? ` · Куплено ${purchased}` : ''}
                   </div>
                 </div>
                 <div className="optimate-dash-balance-progress" style={{ minWidth: 120 }}>
@@ -141,6 +154,11 @@ export default function StudentDashboard() {
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           <div className="card">
+            <div className="card-title">Матеріали від викладача</div>
+            <StudentLearningResourcesCard compact />
+          </div>
+
+          <div className="card">
             <div className="card-title">Моя навчальна програма</div>
             <StudentCurriculumSummary compact showLink />
           </div>
@@ -153,11 +171,16 @@ export default function StudentDashboard() {
             {nextEvent && (
               <>
                 <div
-                  className="schedule-slot"
-                  style={{
-                    borderLeftColor: (PRODUCT_ACCENT[nextEvent.product_type ?? 2] ?? PRODUCT_ACCENT[2]).color,
-                    marginBottom: 10,
-                  }}
+                  className={`schedule-slot ${
+                    nextEvent.schedule_class === 'group'
+                      ? 'group'
+                      : nextEvent.schedule_class === 'speaking_club'
+                        ? 'speaking-club'
+                        : nextEvent.schedule_class === 'pair'
+                          ? 'pair'
+                          : 'individual'
+                  }`}
+                  style={{ marginBottom: 10 }}
                 >
                   <div style={{ fontSize: 14, fontWeight: 600 }}>
                     {nextEvent.product_name || nextEvent.product_type_label}

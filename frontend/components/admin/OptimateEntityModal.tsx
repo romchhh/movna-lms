@@ -7,10 +7,11 @@ import { ProductSummary, stripHtml, zipStudentTeachers } from '@/lib/admin-optim
 import { PortalLoginPasswordPanel } from '@/components/admin/PortalLoginPasswordPanel'
 import { OptimateNotesList } from '@/components/admin/OptimateNotesList'
 import { TeacherLessonStatsPanel } from '@/components/teacher/TeacherLessonStatsPanel'
-import { AppModalHeader } from '@/components/shared/AppModalHeader'
+import { CloseIcon, IconButton, RefreshIcon } from '@/components/shared/Icons'
 import { TeacherAboutBlock, UserAvatar } from '@/components/shared/UserAvatar'
 import { useLmsProfile } from '@/hooks/useLmsProfiles'
 import type { TeacherLessonStats } from '@/lib/teacher-optimate-api'
+import { studentDisplayName, teacherDisplayName } from '@/lib/person-display-name'
 import { useEffect } from 'react'
 
 interface OptimateEntityModalProps {
@@ -30,6 +31,8 @@ interface OptimateEntityModalProps {
   lessonStats?: TeacherLessonStats | null
   lessonStatsLoading?: boolean
   extraSections?: React.ReactNode
+  profileActions?: React.ReactNode
+  profileAddon?: React.ReactNode
 }
 
 function DetailSection({ title, children }: { title: string; children: React.ReactNode }) {
@@ -111,6 +114,8 @@ export function OptimateEntityModal({
   lessonStats,
   lessonStatsLoading,
   extraSections,
+  profileActions,
+  profileAddon,
 }: OptimateEntityModalProps) {
   const resolvedEntityId = entityId ?? (data?.id != null ? String(data.id) : null)
   const { profile: lmsProfile } = useLmsProfile(resolvedEntityId ?? undefined)
@@ -126,7 +131,13 @@ export function OptimateEntityModal({
 
   if (!open) return null
 
-  const displayName = title || String(data?.full_name ?? data?.first_name ?? 'Профіль')
+  const displayName = kind === 'student'
+    ? studentDisplayName(data, String(title ?? 'Учень'))
+    : teacherDisplayName(data, String(title ?? 'Викладач'))
+  const headerTitle = kind === 'student' ? 'Учень' : 'Викладач'
+  const cacheMeta = audience === 'admin' && cache
+    ? `Optimate · ${formatCacheAge(cache.synced_at)}${cache.cached ? ' · кеш' : ' · свіжі дані'}`
+    : undefined
   const productsSummary = (data?.products_summary as ProductSummary[] | undefined) ?? []
   const contacts = (data?.contacts as { type: string; value: string }[] | undefined) ?? []
   const studentTeachers = kind === 'student' && data
@@ -141,39 +152,54 @@ export function OptimateEntityModal({
 
   return (
     <div className={`optimate-modal-overlay${overlayClassName ? ` ${overlayClassName}` : ''}`} onClick={onClose}>
-      <div className="optimate-modal" onClick={e => e.stopPropagation()}>
-        <AppModalHeader
-          title={title}
-          meta={
-            audience === 'admin' && cache
-              ? `Optimate · ${formatCacheAge(cache.synced_at)}${cache.cached ? ' · кеш' : ' · свіжі дані'}`
-              : undefined
-          }
-          onClose={onClose}
-          onRefresh={onRefresh}
-          refreshLoading={loading}
-        />
-
-        {data && (
-          <div className="optimate-modal-profile-head">
-            <UserAvatar
-              name={displayName}
-              optimateId={resolvedEntityId ?? undefined}
-              avatarUrl={lmsProfile?.avatar_url}
-              size="xl"
-              kind={kind === 'teacher' ? 'teacher' : 'student'}
-            />
-            <div className="optimate-modal-profile-head-text">
-              <div className="optimate-modal-profile-name">{displayName}</div>
-              {kind === 'teacher' && (
+      <div className="optimate-modal optimate-modal--entity-unified" onClick={e => e.stopPropagation()}>
+        <div className="optimate-modal-entity-hero">
+          <div className="optimate-modal-entity-hero-row">
+            {(data || loading) && (
+              <UserAvatar
+                name={displayName}
+                optimateId={resolvedEntityId ?? undefined}
+                avatarUrl={lmsProfile?.avatar_url}
+                size="xl"
+                kind={kind === 'teacher' ? 'teacher' : 'student'}
+              />
+            )}
+            <div className="optimate-modal-entity-hero-text">
+              <span className="optimate-modal-entity-hero-label">{headerTitle}</span>
+              {cacheMeta && (
+                <span className="optimate-modal-entity-hero-meta">{cacheMeta}</span>
+              )}
+              <div className="optimate-modal-entity-hero-name">{displayName}</div>
+              {kind === 'teacher' && data && (
                 <TeacherAboutBlock
                   optimateId={resolvedEntityId ?? undefined}
                   fallbackAbout={data.description ? stripHtml(String(data.description)) : undefined}
                 />
               )}
             </div>
+            <div className="optimate-modal-entity-hero-actions">
+              {profileActions}
+              <IconButton
+                label="Оновити"
+                onClick={onRefresh}
+                loading={loading}
+                variant="ghost"
+                className="app-modal-icon-btn"
+              >
+                <RefreshIcon />
+              </IconButton>
+              <IconButton
+                label="Закрити"
+                onClick={onClose}
+                variant="ghost"
+                className="app-modal-icon-btn"
+              >
+                <CloseIcon />
+              </IconButton>
+            </div>
           </div>
-        )}
+          {profileAddon}
+        </div>
 
         <div className="optimate-modal-body">
           {loading && !data && <p>Завантаження деталей...</p>}

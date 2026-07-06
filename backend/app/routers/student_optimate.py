@@ -194,6 +194,8 @@ async def student_overview(
         upcoming_events=[_event_out(e) for e in upcoming[:5]],
         recent_transactions=[_transaction_out(t) for t in transactions],
         total_lessons_remaining=sum(b.lessons_remaining for b in balances),
+        total_lessons_purchased=sum(b.lessons_total for b in balances),
+        total_lessons_used=sum(b.lessons_used for b in balances),
         synced_at=synced_at,
         cache=CacheMeta(cached=from_cache, synced_at=synced_at),
     )

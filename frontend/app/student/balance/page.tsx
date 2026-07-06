@@ -10,10 +10,16 @@ import {
 } from '@/lib/optimate-api'
 import { useCallback, useEffect, useState } from 'react'
 
+function purchasedTotal(product: ProductBalance) {
+  if (product.lessons_total > 0) return product.lessons_total
+  return product.lessons_remaining + product.lessons_used
+}
+
 function BalanceCard({ product }: { product: ProductBalance }) {
   const accent = PRODUCT_ACCENT[product.product_type] ?? { color: 'var(--p)', badge: 'gray' as const }
-  const pct = product.lessons_total > 0
-    ? (product.lessons_remaining / product.lessons_total) * 100
+  const purchased = purchasedTotal(product)
+  const pct = purchased > 0
+    ? (product.lessons_remaining / purchased) * 100
     : 0
   const low = product.lessons_remaining <= 3 && product.lessons_remaining > 0
 
@@ -23,21 +29,35 @@ function BalanceCard({ product }: { product: ProductBalance }) {
         <Badge variant={accent.badge}>{product.product_type_label}</Badge>
       </div>
 
-      <div style={{ marginBottom: 16 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 4 }}>
-          <div className="student-balance-hero" style={{ fontSize: 36, fontWeight: 700, color: 'var(--tx)' }}>
+      <div className="student-balance-metrics" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 16 }}>
+        <div>
+          <div style={{ fontSize: 11, color: 'var(--tx3)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Залишок</div>
+          <div style={{ fontSize: 28, fontWeight: 700, color: 'var(--tx)', lineHeight: 1.2 }}>
             {product.lessons_remaining}
           </div>
-          {low && <Badge variant="amber">⚠ Мало</Badge>}
         </div>
-        <div style={{ fontSize: 13, color: 'var(--tx2)', marginBottom: 12 }}>
-          з {product.lessons_total} куплених · {product.lessons_used} використано
+        <div>
+          <div style={{ fontSize: 11, color: 'var(--tx3)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Використано</div>
+          <div style={{ fontSize: 28, fontWeight: 700, color: 'var(--tx)', lineHeight: 1.2 }}>
+            {product.lessons_used}
+          </div>
         </div>
-        <ProgressBar pct={pct} color={accent.color} />
+        <div>
+          <div style={{ fontSize: 11, color: 'var(--tx3)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Куплено</div>
+          <div style={{ fontSize: 28, fontWeight: 700, color: 'var(--tx)', lineHeight: 1.2 }}>
+            {purchased}
+          </div>
+        </div>
       </div>
 
+      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 8 }}>
+        {low && <Badge variant="amber">⚠ Мало залишку</Badge>}
+      </div>
+
+      <ProgressBar pct={pct} color={accent.color} />
+
       {product.price_per_lesson != null && product.price_per_lesson > 0 && (
-        <div style={{ fontSize: 12, color: 'var(--tx3)' }}>
+        <div style={{ fontSize: 12, color: 'var(--tx3)', marginTop: 12 }}>
           Ціна за урок: {product.price_per_lesson} ₴
         </div>
       )}
@@ -105,7 +125,7 @@ export default function StudentBalance() {
     <>
       <PageHeader
         title="Баланс уроків"
-        sub={loading ? 'Завантаження з Optimate...' : 'Актуальні баланси по всіх продуктах'}
+        sub={loading ? 'Завантаження з Optimate...' : 'Залишок, використано та куплено по всіх продуктах'}
       />
 
       {error && <div className="alert">{error}</div>}
