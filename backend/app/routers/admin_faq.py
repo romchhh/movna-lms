@@ -3,7 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
 from app.core.security import require_role
-from app.models.faq import FaqAudience, FaqItem
+from app.models.faq import FaqItem
 from app.models.user import User, UserRole
 from app.schemas.faq import (
     FaqAdminListOut,
@@ -37,7 +37,7 @@ async def admin_create_faq(
     item = FaqItem(
         question=body.question.strip(),
         answer_md=body.answer_md.strip(),
-        audience=FaqAudience(body.audience),
+        audience=body.audience,
         sort_order=max_order + 1,
         is_published=body.is_published,
     )
@@ -72,7 +72,7 @@ async def admin_update_faq(
     if body.answer_md is not None:
         item.answer_md = body.answer_md.strip()
     if body.audience is not None:
-        item.audience = FaqAudience(body.audience)
+        item.audience = body.audience
     if body.is_published is not None:
         item.is_published = body.is_published
     if body.sort_order is not None:

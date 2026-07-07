@@ -6,6 +6,7 @@ import {
   ScheduleLessonPanel,
   TeacherCancelLessonDialog,
 } from '@/components/teacher/ScheduleLessonPanel'
+import { AddButtonLabel } from '@/components/shared/AddButtonLabel'
 import { Card, Empty, PageHeader } from '@/components/shared/UI'
 import {
   type TeacherEvent,
@@ -67,11 +68,7 @@ export default function TeacherSchedulePage() {
       <PageHeader
         title="Мій розклад"
         sub={loading ? 'Завантаження...' : `${plannedCount} запланованих · синхронізація з Optimate`}
-      >
-        <button type="button" className="btn btn-primary btn-sm" onClick={() => setCreateOpen(true)}>
-          + Запланувати урок
-        </button>
-      </PageHeader>
+      />
 
       {error && <div className="alert">{error}</div>}
 
@@ -84,7 +81,7 @@ export default function TeacherSchedulePage() {
           </p>
         </div>
         <button type="button" className="btn btn-primary schedule-page-hero-btn" onClick={() => setCreateOpen(true)}>
-          Запланувати урок
+          <AddButtonLabel>Запланувати урок</AddButtonLabel>
         </button>
       </div>
 

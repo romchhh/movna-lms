@@ -134,16 +134,7 @@ function TeacherHomeworkContent() {
       )}
 
       {loading && <Empty label="Завантаження..." />}
-      {!loading && items.length === 0 && (
-        <div className="hw-empty-create">
-          <Empty label={emptyLabel} />
-          {filter !== 'to_review' && (
-            <button type="button" className="btn btn-teal btn-sm" onClick={() => setCreateOpen(true)}>
-              <AddButtonLabel>Додати ДЗ</AddButtonLabel>
-            </button>
-          )}
-        </div>
-      )}
+      {!loading && items.length === 0 && <Empty label={emptyLabel} />}
 
       <div className="hw-teacher-list">
         {items.map(assignment => (

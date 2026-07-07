@@ -116,11 +116,11 @@ def normalize_lesson_counts(
     total: float,
     used: float,
 ) -> tuple[float, float, float]:
-    """Узгоджує remaining / purchased / used, якщо Optimate повернув лише залишок."""
+    """Узгоджує remaining / purchased / used, якщо Optimate повернув часткові дані."""
     remaining = float(remaining or 0)
     total = float(total or 0)
     used = float(used or 0)
-    if total <= 0 and (remaining > 0 or used > 0):
+    if total <= 0 and used > 0:
         total = remaining + used
     if used <= 0 and total > 0 and remaining >= 0:
         used = max(0.0, total - remaining)

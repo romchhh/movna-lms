@@ -3,6 +3,8 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
+from app.models.faq import FaqAudience
+
 FaqAudienceLiteral = Literal["all", "student", "teacher"]
 
 
@@ -10,7 +12,7 @@ class FaqItemOut(BaseModel):
     id: int
     question: str
     answer_md: str
-    audience: FaqAudienceLiteral
+    audience: FaqAudience
     sort_order: int
     is_published: bool
     created_at: datetime
@@ -23,7 +25,7 @@ class FaqPublicItemOut(BaseModel):
     id: int
     question: str
     answer_md: str
-    audience: FaqAudienceLiteral
+    audience: FaqAudience
 
     model_config = {"from_attributes": True}
 
@@ -39,14 +41,14 @@ class FaqAdminListOut(BaseModel):
 class FaqItemCreate(BaseModel):
     question: str = Field(min_length=1, max_length=500)
     answer_md: str = ""
-    audience: FaqAudienceLiteral = "all"
+    audience: FaqAudience = FaqAudience.ALL
     is_published: bool = True
 
 
 class FaqItemUpdate(BaseModel):
     question: str | None = Field(default=None, min_length=1, max_length=500)
     answer_md: str | None = None
-    audience: FaqAudienceLiteral | None = None
+    audience: FaqAudience | None = None
     is_published: bool | None = None
     sort_order: int | None = None
 

@@ -1,7 +1,8 @@
 let audioCtx: AudioContext | null = null
+let unlocked = false
 
-function getAudioContext(): AudioContext | null {
-  if (typeof window === 'undefined') return null
+function ensureAudioContext(): AudioContext | null {
+  if (typeof window === 'undefined' || !unlocked) return null
   if (!audioCtx) {
     const Ctx = window.AudioContext || (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext
     if (!Ctx) return null
@@ -12,7 +13,8 @@ function getAudioContext(): AudioContext | null {
 
 /** Розблокувати звук після першої взаємодії (політика автопрогравання браузера). */
 export function unlockNotificationSound() {
-  const ctx = getAudioContext()
+  unlocked = true
+  const ctx = ensureAudioContext()
   if (ctx?.state === 'suspended') void ctx.resume()
 }
 
@@ -33,7 +35,7 @@ function tone(ctx: AudioContext, frequency: number, start: number, duration: num
 export function playNotificationSound() {
   if (typeof document === 'undefined' || document.visibilityState !== 'visible') return
 
-  const ctx = getAudioContext()
+  const ctx = ensureAudioContext()
   if (!ctx) return
 
   try {

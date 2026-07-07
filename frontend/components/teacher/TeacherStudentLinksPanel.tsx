@@ -1,5 +1,6 @@
 'use client'
 
+import { AddButtonLabel } from '@/components/shared/AddButtonLabel'
 import { Empty } from '@/components/shared/UI'
 import { detectStudentLinkType, linkTypeHint } from '@/lib/detect-link-type'
 import {
@@ -239,7 +240,7 @@ export function TeacherStudentLinksPanel({
           <p className="stc-panel-sub">Урок, Miro та додаткові матеріали — учень бачить у своєму кабінеті</p>
         </div>
         <button type="button" className="btn btn-sm btn-teal" onClick={() => setModalType('custom')}>
-          + Додати посилання
+          <AddButtonLabel>Додати посилання</AddButtonLabel>
         </button>
       </div>
 

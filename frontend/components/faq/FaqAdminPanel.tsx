@@ -2,6 +2,7 @@
 
 import { MarkdownEditor } from '@/components/homework/MarkdownEditor'
 import { ConfirmDialog } from '@/components/lesson-requests/ConfirmDialog'
+import { AddButtonLabel } from '@/components/shared/AddButtonLabel'
 import { Badge, Card, Empty } from '@/components/shared/UI'
 import {
   faqApi,
@@ -150,7 +151,7 @@ export function FaqAdminPanel() {
 
       <div className="faq-admin-toolbar">
         <button type="button" className="btn btn-teal btn-sm" onClick={startCreate} disabled={editingId === 'new'}>
-          + Додати питання
+          <AddButtonLabel>Додати питання</AddButtonLabel>
         </button>
       </div>
 

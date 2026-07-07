@@ -13,7 +13,12 @@ from app.services.optimate import (
     ProductBalance,
     get_optimate_client,
 )
-from app.services.optimate_balance_enrichment import enrich_students_balances
+from app.services.optimate_balance_enrichment import (
+    BALANCE_INCLUDE,
+    enrich_student_balance_data,
+    enrich_students_balances,
+    unwrap_student_payload,
+)
 from app.services.optimate_parsers import (
     enrich_admin_event_dict,
     enrich_event_teacher_names,
@@ -41,7 +46,12 @@ async def get_cached_balances(
     client = get_optimate_client()
 
     async def fetch() -> list[ProductBalance]:
-        return await client.get_student_balances(student_id)
+        raw = await client.get_student(student_id)
+        if not raw:
+            return []
+        data = unwrap_student_payload(raw)
+        data = await enrich_student_balance_data(client, student_id, data)
+        return client._parse_product_balances(data)
 
     return await optimate_cache.get_or_fetch(
         f"{_student_prefix(student_id)}balances",
@@ -219,10 +229,14 @@ async def get_cached_admin_student_detail(
     client = get_optimate_client()
 
     async def fetch() -> Optional[dict[str, Any]]:
-        return await client.get_student_by_id(student_id)
+        raw = await client.get_student_by_id(student_id, include=BALANCE_INCLUDE)
+        if not raw:
+            return None
+        data = unwrap_student_payload(raw)
+        return await enrich_student_balance_data(client, student_id, data)
 
     return await optimate_cache.get_or_fetch(
-        f"{_admin_prefix()}student:{student_id}",
+        f"{_admin_prefix()}student:{student_id}:v2",
         settings.OPTIMATE_CACHE_ADMIN_DETAIL_TTL,
         fetch,
         force_refresh=force_refresh,
@@ -762,13 +776,14 @@ async def get_cached_teacher_student_detail(
         )
         if not raw:
             return None
-        data = raw.get("data") if isinstance(raw.get("data"), dict) else raw
+        data = unwrap_student_payload(raw)
         if not isinstance(data, dict):
             return None
+        data = await enrich_student_balance_data(client, student_id, data)
         return enrich_teacher_student_detail(data)
 
     return await optimate_cache.get_or_fetch(
-        f"{_teacher_prefix(teacher_id)}student:{student_id}:v2",
+        f"{_teacher_prefix(teacher_id)}student:{student_id}:v3",
         settings.OPTIMATE_CACHE_TEACHER_EVENTS_TTL,
         fetch,
         force_refresh=force_refresh,

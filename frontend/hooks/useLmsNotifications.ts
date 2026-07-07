@@ -94,7 +94,6 @@ export function useLmsNotifications(role: LmsRole) {
   }, [role, maybeSound, homeworkSoundEnabled])
 
   useEffect(() => {
-    unlockNotificationSound()
     const unlock = () => unlockNotificationSound()
     window.addEventListener('pointerdown', unlock, { once: true })
     window.addEventListener('keydown', unlock, { once: true })

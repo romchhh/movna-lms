@@ -350,11 +350,6 @@ export function TeacherCustomCurriculumHub({
                       : 'Оберіть програму зі списку'
                   }
                 />
-                {programs.length === 0 && (
-                  <button type="button" className="btn btn-teal" onClick={startCreate}>
-                    <AddButtonLabel>Створити програму</AddButtonLabel>
-                  </button>
-                )}
               </div>
             )}
           </main>
