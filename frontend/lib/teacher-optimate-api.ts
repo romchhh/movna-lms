@@ -146,6 +146,27 @@ export interface TeacherEventCancelPayload {
   note?: string
 }
 
+export interface LessonNotHeldReason {
+  code: string
+  label: string
+}
+
+export interface TeacherEventMarkPayload {
+  note?: string
+}
+
+export interface TeacherEventNotHeldPayload {
+  reason_code: string
+  note?: string
+}
+
+export interface TeacherEventActionResult {
+  ok: boolean
+  event_id: string
+  message: string
+  optimate_synced?: boolean
+}
+
 export interface PaginatedTeacherStudents {
   data: TeacherStudent[]
   total: number
@@ -285,14 +306,26 @@ export const teacherOptimateApi = {
   },
   cancellationReasons: () =>
     teacherFetch<LessonCancellationReason[]>('/api/teacher/optimate/cancellation-reasons'),
+  notHeldReasons: () =>
+    teacherFetch<LessonNotHeldReason[]>('/api/teacher/optimate/not-held-reasons'),
   createEvent: (payload: TeacherEventCreatePayload) =>
-    teacherFetch<{ ok: boolean; event_id: string; message: string }>(
+    teacherFetch<TeacherEventActionResult>(
       '/api/teacher/optimate/events',
       { method: 'POST', body: JSON.stringify(payload) },
     ),
   cancelEvent: (eventId: string, payload: TeacherEventCancelPayload) =>
-    teacherFetch<{ ok: boolean; event_id: string; message: string }>(
+    teacherFetch<TeacherEventActionResult>(
       `/api/teacher/optimate/events/${encodeURIComponent(eventId)}/cancel`,
+      { method: 'POST', body: JSON.stringify(payload) },
+    ),
+  completeEvent: (eventId: string, payload: TeacherEventMarkPayload = {}) =>
+    teacherFetch<TeacherEventActionResult>(
+      `/api/teacher/optimate/events/${encodeURIComponent(eventId)}/complete`,
+      { method: 'POST', body: JSON.stringify(payload) },
+    ),
+  markEventNotHeld: (eventId: string, payload: TeacherEventNotHeldPayload) =>
+    teacherFetch<TeacherEventActionResult>(
+      `/api/teacher/optimate/events/${encodeURIComponent(eventId)}/not-held`,
       { method: 'POST', body: JSON.stringify(payload) },
     ),
 }

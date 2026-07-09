@@ -5,6 +5,7 @@ import { TeacherAvailabilityCalendar } from '@/components/calendar/TeacherAvaila
 import {
   ScheduleLessonPanel,
   TeacherCancelLessonDialog,
+  TeacherMarkLessonDialog,
 } from '@/components/teacher/ScheduleLessonPanel'
 import { AddButtonLabel } from '@/components/shared/AddButtonLabel'
 import { Card, Empty, PageHeader } from '@/components/shared/UI'
@@ -24,6 +25,7 @@ export default function TeacherSchedulePage() {
   const [error, setError] = useState('')
   const [createOpen, setCreateOpen] = useState(false)
   const [cancelEvent, setCancelEvent] = useState<CalendarEvent | null>(null)
+  const [markEvent, setMarkEvent] = useState<CalendarEvent | null>(null)
 
   const load = useCallback(async (refresh = false) => {
     setLoading(true)
@@ -99,6 +101,8 @@ export default function TeacherSchedulePage() {
           curriculumAudience="teacher"
           enableTeacherCancel
           onTeacherCancel={setCancelEvent}
+          enableTeacherMarking
+          onTeacherMark={setMarkEvent}
         />
       </Card>
 
@@ -125,6 +129,17 @@ export default function TeacherSchedulePage() {
         eventTitle={cancelEvent?.title || 'Урок'}
         onClose={() => setCancelEvent(null)}
         onConfirm={handleCancelConfirm}
+      />
+
+      <TeacherMarkLessonDialog
+        open={!!markEvent}
+        eventId={markEvent?.id || ''}
+        eventTitle={markEvent?.title || 'Урок'}
+        onClose={() => setMarkEvent(null)}
+        onCompleted={async () => {
+          setMarkEvent(null)
+          await load(true)
+        }}
       />
     </>
   )

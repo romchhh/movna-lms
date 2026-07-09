@@ -2,7 +2,7 @@ import { apiFetch, withRefreshQuery } from './api-fetch'
 import { mapOptimateEventToCalendar } from './calendar-types'
 import { zipStudentTeachers } from './optimate-participants'
 import type { CacheMeta, LessonFormatBreakdown } from './optimate-types'
-import type { TeacherLessonStats } from './teacher-optimate-api'
+import type { TeacherLessonStats, PaginatedTeacherTransactions } from './teacher-optimate-api'
 
 export type { CacheMeta }
 export { zipStudentTeachers }
@@ -226,6 +226,27 @@ export const adminOptimateApi = {
         refresh,
       ),
     ),
+  teacherTransactions: (
+    teacherId: string,
+    page = 1,
+    pageSize = 25,
+    dateFrom?: string,
+    dateTo?: string,
+    refresh?: boolean,
+  ) => {
+    const q = new URLSearchParams({
+      page: String(page),
+      page_size: String(pageSize),
+    })
+    if (dateFrom) q.set('date_from', dateFrom)
+    if (dateTo) q.set('date_to', dateTo)
+    return adminFetch<PaginatedTeacherTransactions>(
+      withRefreshQuery(
+        `/api/admin/optimate/teachers/${encodeURIComponent(teacherId)}/transactions?${q}`,
+        refresh,
+      ),
+    )
+  },
   events: (
     daysBack = 1,
     daysForward = 14,

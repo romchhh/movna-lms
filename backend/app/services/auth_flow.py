@@ -3,6 +3,8 @@ from __future__ import annotations
 
 import secrets
 
+from datetime import datetime, timezone
+
 from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -49,6 +51,10 @@ async def verify_optimate_for_user(user: User) -> ParsedContact | None:
             detail="Викладача з таким email не знайдено в Optimate",
         )
     return contact
+
+
+def record_user_login(user: User) -> None:
+    user.last_login_at = datetime.now(timezone.utc)
 
 
 async def sync_user_from_optimate(user: User, contact: ParsedContact | None) -> None:

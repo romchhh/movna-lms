@@ -160,6 +160,11 @@ class LessonCancellationReasonOut(BaseModel):
     label: str
 
 
+class LessonNotHeldReasonOut(BaseModel):
+    code: str
+    label: str
+
+
 class TeacherEventCreateIn(BaseModel):
     student_id: str
     product_id: Optional[str] = None
@@ -172,14 +177,25 @@ class TeacherEventCancelIn(BaseModel):
     note: str = ""
 
 
+class TeacherEventCompleteIn(BaseModel):
+    note: str = ""
+
+
+class TeacherEventNotHeldIn(BaseModel):
+    reason_code: str
+    note: str = ""
+
+
 class TeacherEventActionOut(BaseModel):
     ok: bool
     event_id: str
     message: str = ""
+    optimate_synced: bool = False
 
 
 class EventCancellationOut(BaseModel):
     optimate_event_id: str
+    outcome: str = "cancelled_planned"
     reason_code: str
     reason_label: str
     note: str = ""

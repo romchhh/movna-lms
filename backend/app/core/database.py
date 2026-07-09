@@ -24,6 +24,7 @@ async def init_db():
         await conn.run_sync(Base.metadata.create_all)
         await conn.run_sync(_ensure_user_columns)
         await conn.run_sync(_ensure_teacher_curriculum_columns)
+        await conn.run_sync(_ensure_teacher_event_cancellation_columns)
 
 
 def _ensure_user_columns(connection):
@@ -57,6 +58,10 @@ def _ensure_user_columns(connection):
         connection.execute(
             text("ALTER TABLE users ADD COLUMN about_me TEXT DEFAULT ''")
         )
+    if "last_login_at" not in columns:
+        connection.execute(
+            text("ALTER TABLE users ADD COLUMN last_login_at DATETIME")
+        )
 
 
 def _ensure_teacher_curriculum_columns(connection):
@@ -77,6 +82,24 @@ def _ensure_teacher_curriculum_columns(connection):
     for name, col_type in patches.items():
         if name not in columns:
             connection.execute(text(f"ALTER TABLE teacher_curricula ADD COLUMN {name} {col_type}"))
+
+
+def _ensure_teacher_event_cancellation_columns(connection):
+    if "sqlite" not in settings.DATABASE_URL:
+        return
+    from sqlalchemy import text
+
+    rows = connection.execute(text("PRAGMA table_info(teacher_event_cancellations)")).fetchall()
+    if not rows:
+        return
+    columns = {row[1] for row in rows}
+    if "outcome" not in columns:
+        connection.execute(
+            text(
+                "ALTER TABLE teacher_event_cancellations "
+                "ADD COLUMN outcome VARCHAR(32) DEFAULT 'cancelled_planned'"
+            )
+        )
 
 
 async def get_db():

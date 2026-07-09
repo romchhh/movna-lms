@@ -4,6 +4,7 @@ import { Badge, Empty } from '@/components/shared/UI'
 import { UserAvatar } from '@/components/shared/UserAvatar'
 import {
   type LessonCancellationReason,
+  type LessonNotHeldReason,
   type TeacherEventCreatePayload,
   type TeacherStudent,
   teacherOptimateApi,
@@ -259,6 +260,171 @@ export function ScheduleLessonPanel({
           </footer>
         </form>
       </aside>
+    </div>
+  )
+}
+
+export function TeacherMarkLessonDialog({
+  open,
+  eventId,
+  eventTitle,
+  onClose,
+  onCompleted,
+}: {
+  open: boolean
+  eventId: string
+  eventTitle: string
+  onClose: () => void
+  onCompleted: () => Promise<void>
+}) {
+  const [step, setStep] = useState<'choose' | 'reason'>('choose')
+  const [reasons, setReasons] = useState<LessonNotHeldReason[]>([])
+  const [reasonCode, setReasonCode] = useState('')
+  const [note, setNote] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState('')
+  const [success, setSuccess] = useState('')
+
+  useEffect(() => {
+    if (!open) return
+    setStep('choose')
+    setError('')
+    setSuccess('')
+    setNote('')
+    teacherOptimateApi.notHeldReasons()
+      .then(items => {
+        setReasons(items)
+        setReasonCode(items[0]?.code || '')
+      })
+      .catch(() => setReasons([]))
+  }, [open])
+
+  if (!open) return null
+
+  async function markCompleted() {
+    if (!eventId) return
+    setSubmitting(true)
+    setError('')
+    try {
+      const res = await teacherOptimateApi.completeEvent(eventId)
+      setSuccess(res.message + (res.optimate_synced === false ? ' (збережено в LMS)' : ''))
+      await onCompleted()
+      onClose()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Помилка')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  async function markNotHeld() {
+    if (!eventId) return
+    if (!reasonCode) {
+      setError('Оберіть причину')
+      return
+    }
+    setSubmitting(true)
+    setError('')
+    try {
+      const res = await teacherOptimateApi.markEventNotHeld(eventId, {
+        reason_code: reasonCode,
+        note,
+      })
+      setSuccess(res.message + (res.optimate_synced === false ? ' (збережено в LMS)' : ''))
+      await onCompleted()
+      onClose()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Помилка')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  return (
+    <div className="cal-modal-overlay cal-modal-overlay--stack" onClick={onClose} role="presentation">
+      <div
+        className="cal-modal cal-modal--tinted schedule-mark-modal"
+        style={{ '--cal-modal-tint': 'var(--t)' } as CSSProperties}
+        onClick={e => e.stopPropagation()}
+        role="dialog"
+      >
+        <div className="cal-modal-body" style={{ paddingTop: 18 }}>
+          <h3 style={{ margin: '0 0 6px', fontSize: 18 }}>Відмітити заняття</h3>
+          <p style={{ margin: '0 0 16px', color: 'var(--tx2)', fontSize: 13 }}>{eventTitle}</p>
+
+          {step === 'choose' ? (
+            <div className="schedule-mark-options">
+              <button
+                type="button"
+                className="schedule-mark-option schedule-mark-option--done"
+                disabled={submitting}
+                onClick={markCompleted}
+              >
+                <span className="schedule-mark-option-title">Проведене заняття</span>
+                <span className="schedule-mark-option-sub">Урок відбувся, нарахування ЗП</span>
+              </button>
+              <button
+                type="button"
+                className="schedule-mark-option schedule-mark-option--missed"
+                disabled={submitting}
+                onClick={() => setStep('reason')}
+              >
+                <span className="schedule-mark-option-title">Заняття не відбулось</span>
+                <span className="schedule-mark-option-sub">Потрібна причина</span>
+              </button>
+            </div>
+          ) : (
+            <>
+              <p className="schedule-mark-reasons-label">Будь ласка, вкажіть причину</p>
+              <div className="schedule-mark-reasons">
+                {reasons.map(reason => (
+                  <label key={reason.code} className="schedule-mark-reason">
+                    <input
+                      type="radio"
+                      name="not-held-reason"
+                      value={reason.code}
+                      checked={reasonCode === reason.code}
+                      onChange={() => setReasonCode(reason.code)}
+                    />
+                    <span>{reason.label}</span>
+                  </label>
+                ))}
+              </div>
+
+              <label className="schedule-panel-label" htmlFor="mark-note" style={{ marginTop: 12 }}>
+                Коментар (необовʼязково)
+              </label>
+              <textarea
+                id="mark-note"
+                className="input"
+                rows={2}
+                value={note}
+                onChange={e => setNote(e.target.value)}
+              />
+            </>
+          )}
+
+          {error && <div className="alert" style={{ marginTop: 12 }}>{error}</div>}
+          {success && <div className="student-login-success" style={{ marginTop: 12 }}>{success}</div>}
+
+          <div className="schedule-panel-footer" style={{ marginTop: 16 }}>
+            {step === 'reason' ? (
+              <button type="button" className="btn btn-secondary" onClick={() => setStep('choose')}>
+                Назад
+              </button>
+            ) : (
+              <button type="button" className="btn btn-secondary" onClick={onClose}>
+                Скасувати
+              </button>
+            )}
+            {step === 'reason' && (
+              <button type="button" className="btn btn-primary" disabled={submitting} onClick={markNotHeld}>
+                {submitting ? 'Збереження…' : 'Підтвердити'}
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
     </div>
   )
 }

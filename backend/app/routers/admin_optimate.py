@@ -9,7 +9,7 @@ from app.core.database import get_db
 from app.core.security import require_role
 from app.models.lesson_request import LessonRequest, LessonRequestStatus
 from app.models.user import User, UserRole
-from app.schemas.optimate import CacheMeta, TeacherLessonStatsOut
+from app.schemas.optimate import CacheMeta, TeacherLessonStatsOut, PaginatedTeacherTransactionsOut, TeacherTransactionsSummaryOut, TeacherTransactionOut
 from app.schemas.optimate_admin import (
     AdminEventOut,
     AdminOverviewOut,
@@ -34,6 +34,8 @@ from app.services.optimate_cache import (
     get_cached_admin_teachers,
     get_cached_teacher_lesson_stats,
     get_cached_teacher_name_map,
+    get_cached_teacher_transactions,
+    get_cached_teacher_transactions_summary,
     invalidate_admin_cache,
 )
 from app.services.optimate_parsers import (
@@ -51,13 +53,14 @@ from app.services.student_account import (
     readable_password as readable_student_password,
     set_student_login_password,
 )
-from app.routers.optimate_router_helpers import cache_meta, ensure_optimate_configured
+from app.routers.optimate_router_helpers import cache_meta, ensure_optimate_configured, teacher_transaction_out
 from app.services.teacher_account import (
     ensure_teacher_user,
     find_teacher_user,
     readable_password as readable_teacher_password,
     set_teacher_login_password,
 )
+from app.services.portal_login import attach_lms_login_info
 
 router = APIRouter()
 
@@ -132,6 +135,7 @@ async def list_students(
 async def get_student_detail(
     student_id: str,
     refresh: bool = Query(False),
+    db: AsyncSession = Depends(get_db),
     _: User = Depends(require_role(UserRole.ADMIN)),
 ):
     ensure_optimate_configured()
@@ -141,8 +145,9 @@ async def get_student_detail(
     )
     if not raw:
         raise HTTPException(status_code=404, detail="Учня не знайдено в Optimate")
+    data = await attach_lms_login_info(db, enrich_student_detail(raw), UserRole.STUDENT)
     return StudentDetailOut(
-        data=enrich_student_detail(raw),
+        data=data,
         cache=cache_meta(cached_at, from_cache),
     )
 
@@ -256,6 +261,7 @@ async def list_teachers(
 async def get_teacher_detail(
     teacher_id: str,
     refresh: bool = Query(False),
+    db: AsyncSession = Depends(get_db),
     _: User = Depends(require_role(UserRole.ADMIN)),
 ):
     ensure_optimate_configured()
@@ -265,8 +271,9 @@ async def get_teacher_detail(
     )
     if not raw:
         raise HTTPException(status_code=404, detail="Викладача не знайдено в Optimate")
+    data = await attach_lms_login_info(db, enrich_teacher_detail(raw), UserRole.TEACHER)
     return TeacherDetailOut(
-        data=enrich_teacher_detail(raw),
+        data=data,
         cache=cache_meta(cached_at, from_cache),
     )
 
@@ -291,6 +298,41 @@ async def get_teacher_lesson_stats(
         force_refresh=refresh,
     )
     return TeacherLessonStatsOut(**stats, cache=cache_meta(cached_at, from_cache))
+
+
+@router.get("/teachers/{teacher_id}/transactions", response_model=PaginatedTeacherTransactionsOut)
+async def get_teacher_transactions(
+    teacher_id: str,
+    page: int = Query(1, ge=1),
+    page_size: int = Query(25, ge=1, le=100),
+    date_from: Optional[str] = Query(None),
+    date_to: Optional[str] = Query(None),
+    refresh: bool = Query(False),
+    _: User = Depends(require_role(UserRole.ADMIN)),
+):
+    ensure_optimate_configured()
+    (items, total), cached_at, from_cache = await get_cached_teacher_transactions(
+        teacher_id,
+        page=page,
+        page_size=page_size,
+        date_from=date_from,
+        date_to=date_to,
+        force_refresh=refresh,
+    )
+    summary_raw, _, _ = await get_cached_teacher_transactions_summary(
+        teacher_id,
+        date_from=date_from,
+        date_to=date_to,
+        force_refresh=refresh,
+    )
+    return PaginatedTeacherTransactionsOut(
+        data=[teacher_transaction_out(t) for t in items],
+        total=total,
+        page=page,
+        page_size=page_size,
+        summary=TeacherTransactionsSummaryOut(**summary_raw),
+        cache=cache_meta(cached_at, from_cache),
+    )
 
 
 @router.get("/teachers/{teacher_id}/account", response_model=StudentAccountOut)

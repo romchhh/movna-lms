@@ -37,6 +37,17 @@ LESSON_CANCELLATION_REASONS: list[dict[str, str]] = [
     {"code": "other", "label": "Інше"},
 ]
 
+# Причини, коли заняття не відбулось (як у Optimate при відмітці)
+LESSON_NOT_HELD_REASONS: list[dict[str, str | int]] = [
+    {"code": "student_absent", "label": "Студент відсутній", "optimate_reason": 1},
+    {"code": "cancelled_by_teacher", "label": "Скасовано вчителем", "optimate_reason": 2},
+    {"code": "cancelled_by_student_on_time", "label": "Скасовано студентом вчасно", "optimate_reason": 3},
+    {"code": "cancelled_by_student_late", "label": "Скасовано студентом невчасно", "optimate_reason": 4},
+    {"code": "force_majeure", "label": "Форс-мажор", "optimate_reason": 5},
+]
+
+LESSON_MARK_OUTCOMES = frozenset({"cancelled_planned", "completed", "not_held"})
+
 EVENT_TYPE_LABELS: dict[int, str] = {
     1: "Урок",
 }

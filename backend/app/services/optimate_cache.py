@@ -14,7 +14,6 @@ from app.services.optimate import (
     get_optimate_client,
 )
 from app.services.optimate_balance_enrichment import (
-    BALANCE_INCLUDE,
     enrich_student_balance_data,
     enrich_students_balances,
     unwrap_student_payload,
@@ -226,17 +225,19 @@ async def get_cached_admin_student_detail(
     *,
     force_refresh: bool = False,
 ) -> tuple[Optional[dict[str, Any]], float, bool]:
+    from app.services.optimate_admin_labels import STUDENT_DETAIL_INCLUDE
+
     client = get_optimate_client()
 
     async def fetch() -> Optional[dict[str, Any]]:
-        raw = await client.get_student_by_id(student_id, include=BALANCE_INCLUDE)
+        raw = await client.get_student_by_id(student_id, include=STUDENT_DETAIL_INCLUDE)
         if not raw:
             return None
         data = unwrap_student_payload(raw)
         return await enrich_student_balance_data(client, student_id, data)
 
     return await optimate_cache.get_or_fetch(
-        f"{_admin_prefix()}student:{student_id}:v2",
+        f"{_admin_prefix()}student:{student_id}:v3",
         settings.OPTIMATE_CACHE_ADMIN_DETAIL_TTL,
         fetch,
         force_refresh=force_refresh,

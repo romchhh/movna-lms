@@ -12,6 +12,7 @@ import {
 import { EventHomeworkSection } from '@/components/homework/EventHomeworkSection'
 import { StudentEventHomeworkSection } from '@/components/homework/StudentEventHomeworkSection'
 import { EventCurriculumTopicSection } from '@/components/curriculum/EventCurriculumTopicSection'
+import { EventMeetingLinksSection } from '@/components/lesson/EventMeetingLinksSection'
 import { ConfirmDialog } from '@/components/lesson-requests/ConfirmDialog'
 import { TeacherAboutBlock, UserAvatar } from '@/components/shared/UserAvatar'
 import { useLmsProfiles } from '@/hooks/useLmsProfiles'
@@ -92,6 +93,7 @@ export function EventDetailModal({
   enableLessonRequests = false,
   enableHomework = false,
   enableStudentHomework = false,
+  enableMeetingLinks = false,
   enableCurriculumTopic = false,
   curriculumAudience = 'student' as 'teacher' | 'student',
   curriculumStudentId,
@@ -99,6 +101,8 @@ export function EventDetailModal({
   onRequestCreated,
   enableTeacherCancel = false,
   onTeacherCancel,
+  enableTeacherMarking = false,
+  onTeacherMark,
 }: {
   event: CalendarEvent | null
   onClose: () => void
@@ -107,6 +111,7 @@ export function EventDetailModal({
   enableLessonRequests?: boolean
   enableHomework?: boolean
   enableStudentHomework?: boolean
+  enableMeetingLinks?: boolean
   enableCurriculumTopic?: boolean
   curriculumAudience?: 'teacher' | 'student'
   curriculumStudentId?: string
@@ -114,6 +119,8 @@ export function EventDetailModal({
   onRequestCreated?: () => void
   enableTeacherCancel?: boolean
   onTeacherCancel?: (event: CalendarEvent) => void
+  enableTeacherMarking?: boolean
+  onTeacherMark?: (event: CalendarEvent) => void
 }) {
   const open = event != null
   const active = event ? isEventActive(event.starts_at, event.ends_at) : false
@@ -134,9 +141,19 @@ export function EventDetailModal({
     && event.status_label !== 'Скасовано'
     && new Date(event.ends_at).getTime() > Date.now()
 
+  const canTeacherMark = enableTeacherMarking && event
+    && event.status_label === 'Заплановано'
+    && new Date(event.starts_at).getTime() <= Date.now()
+
   function handleTeacherCancelClick() {
     if (!event || !onTeacherCancel) return
     onTeacherCancel(event)
+    onClose()
+  }
+
+  function handleTeacherMarkClick() {
+    if (!event || !onTeacherMark) return
+    onTeacherMark(event)
     onClose()
   }
 
@@ -314,6 +331,13 @@ export function EventDetailModal({
           {requestError && <div className="alert" style={{ marginTop: 12 }}>{requestError}</div>}
           {requestSuccess && <div className="student-login-success" style={{ marginTop: 12 }}>{requestSuccess}</div>}
 
+          {enableMeetingLinks && (
+            <EventMeetingLinksSection
+              teacherId={event.teacher_ids?.[0] ?? teachers[0]?.id}
+              productName={event.product_type_label || event.title}
+            />
+          )}
+
           {enableCurriculumTopic && (
             <EventCurriculumTopicSection
               eventId={event.id}
@@ -328,6 +352,21 @@ export function EventDetailModal({
 
           {enableStudentHomework && onOpenHomework && (
             <StudentEventHomeworkSection event={event} onOpen={onOpenHomework} />
+          )}
+
+          {canTeacherMark && onTeacherMark && (
+            <div className="cal-modal-actions cal-modal-actions--mark">
+              <button
+                type="button"
+                className="btn btn-sm btn-primary"
+                onClick={handleTeacherMarkClick}
+              >
+                Відмітити заняття
+              </button>
+              <p className="cal-modal-mark-hint">
+                Позначте, чи урок відбувся — це потрібно для нарахування зарплати
+              </p>
+            </div>
           )}
 
           {canTeacherCancel && onTeacherCancel && (

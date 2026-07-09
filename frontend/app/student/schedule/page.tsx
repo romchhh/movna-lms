@@ -55,6 +55,7 @@ export default function StudentSchedule() {
           emptyLabel="Занять не знайдено"
           defaultView="week"
           enableLessonRequests
+          enableMeetingLinks
           enableStudentHomework
           enableCurriculumTopic
           curriculumAudience="student"

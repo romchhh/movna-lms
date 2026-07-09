@@ -4497,6 +4497,50 @@ body.more-open {
   color: var(--tx3);
 }
 
+.cal-format-filter {
+  gap: 8px;
+}
+
+.cal-format-filter-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border: 1px solid var(--bd);
+  border-radius: 999px;
+  background: var(--bg);
+  color: var(--tx2);
+  font-size: 11px;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s, opacity 0.15s;
+}
+
+.cal-format-filter-chip:hover {
+  border-color: color-mix(in srgb, var(--a) 35%, var(--bd));
+  color: var(--tx);
+}
+
+.cal-format-filter-chip--on {
+  background: var(--bg2);
+  border-color: color-mix(in srgb, var(--a) 40%, var(--bd));
+  color: var(--tx);
+}
+
+.cal-format-filter-chip:not(.cal-format-filter-chip--on) {
+  opacity: 0.55;
+}
+
+.cal-format-filter-count {
+  min-width: 18px;
+  padding: 1px 5px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--tx) 8%, var(--bg2));
+  color: var(--tx3);
+  font-size: 10px;
+  font-weight: 650;
+  text-align: center;
+}
+
 .cal-format-badge {
   display: inline-flex;
   align-items: center;
@@ -5483,6 +5527,34 @@ body.more-open {
   margin-top: 16px;
   padding-top: 16px;
   border-top: 1px solid var(--bd);
+}
+
+.cal-meeting-links {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--bd);
+}
+
+.cal-meeting-links-label {
+  font-size: 12px;
+  font-weight: 650;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--tx2);
+  margin-bottom: 10px;
+}
+
+.cal-meeting-links-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.cal-meeting-links-hint {
+  margin: 8px 0 0;
+  font-size: 13px;
+  color: var(--tx2);
+  line-height: 1.4;
 }
 
 .lesson-requests-list {
@@ -10306,6 +10378,53 @@ body.more-open {
   flex-shrink: 0;
 }
 
+.optimate-entity-tabs {
+  display: flex;
+  gap: 6px;
+  padding: 0 20px 12px;
+  border-bottom: 1px solid var(--bd);
+}
+
+.optimate-entity-tab {
+  padding: 8px 14px;
+  border: 1px solid transparent;
+  border-radius: var(--r1);
+  background: transparent;
+  color: var(--tx2);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.optimate-entity-tab:hover {
+  color: var(--tx);
+  background: var(--bg2);
+}
+
+.optimate-entity-tab--active {
+  color: var(--tx);
+  background: var(--bg2);
+  border-color: var(--bd);
+}
+
+.teacher-salary-embedded {
+  padding: 4px 0 8px;
+}
+
+.teacher-salary-embedded .teacher-salary-filters {
+  margin-bottom: 12px;
+}
+
+.teacher-salary-embedded .teacher-salary-stats {
+  margin-bottom: 12px;
+}
+
+.teacher-salary-embedded .teacher-salary-note {
+  margin: 12px 0 0;
+  font-size: 12px;
+}
+
 .optimate-student-settings {
   margin: 0 0 16px;
   padding: 14px 0 0;
@@ -10923,6 +11042,104 @@ button.student-resource-card {
 
 .schedule-cancel-modal {
   max-width: 420px;
+}
+
+.schedule-mark-modal {
+  max-width: 440px;
+}
+
+.schedule-mark-options {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.schedule-mark-option {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  width: 100%;
+  padding: 14px 16px;
+  border-radius: var(--r2);
+  border: 1px solid var(--bd);
+  background: var(--bg2);
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.schedule-mark-option:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--t) 35%, var(--bd));
+  background: color-mix(in srgb, var(--t) 6%, var(--bg2));
+}
+
+.schedule-mark-option--done {
+  border-color: color-mix(in srgb, var(--gd) 40%, var(--bd));
+}
+
+.schedule-mark-option--missed {
+  border-color: color-mix(in srgb, var(--rd) 35%, var(--bd));
+}
+
+.schedule-mark-option-title {
+  font-size: 14px;
+  font-weight: 650;
+  color: var(--tx);
+}
+
+.schedule-mark-option-sub {
+  font-size: 12px;
+  color: var(--tx2);
+}
+
+.schedule-mark-reasons-label {
+  margin: 0 0 10px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--tx);
+}
+
+.schedule-mark-reasons {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.schedule-mark-reason {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: var(--r1);
+  border: 1px solid var(--bd);
+  background: var(--bg2);
+  font-size: 13px;
+  color: var(--tx);
+  cursor: pointer;
+}
+
+.schedule-mark-reason:has(input:checked) {
+  border-color: color-mix(in srgb, var(--t) 40%, var(--bd));
+  background: color-mix(in srgb, var(--t) 8%, var(--bg2));
+}
+
+.schedule-mark-reason input {
+  margin-top: 2px;
+  flex-shrink: 0;
+}
+
+.cal-modal-actions--mark {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+}
+
+.cal-modal-mark-hint {
+  margin: 0;
+  font-size: 12px;
+  color: var(--tx3);
+  line-height: 1.4;
 }
 
 /* Teacher salaries */

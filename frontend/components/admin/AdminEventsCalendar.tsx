@@ -209,7 +209,7 @@ export function AdminEventsCalendar({
       embed={embed}
       entityLinks="admin"
       showParticipants
-      showFormatLegend={showFormatLegend ?? !embed}
+      showFormatLegend={showFormatLegend ?? true}
     />
   )
 

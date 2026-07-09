@@ -12,6 +12,7 @@ from app.schemas.optimate import (
     EventCancellationOut,
     EventOut,
     LessonCancellationReasonOut,
+    LessonNotHeldReasonOut,
     PaginatedEventsOut,
     PaginatedTeacherStudentsOut,
     PaginatedTeacherTransactionsOut,
@@ -19,7 +20,9 @@ from app.schemas.optimate import (
     ScheduleSlotOut,
     TeacherEventActionOut,
     TeacherEventCancelIn,
+    TeacherEventCompleteIn,
     TeacherEventCreateIn,
+    TeacherEventNotHeldIn,
     TeacherGroupOut,
     TeacherGroupStudentOut,
     TeacherGroupsResponse,
@@ -34,7 +37,7 @@ from app.schemas.optimate import (
     TeacherTransactionsSummaryOut,
 )
 from app.services.optimate import get_optimate_client
-from app.services.optimate_labels import LESSON_CANCELLATION_REASONS
+from app.services.optimate_labels import LESSON_CANCELLATION_REASONS, LESSON_NOT_HELD_REASONS
 from app.services.optimate_admin_labels import PROFILE_INCLUDE
 from app.services.optimate_cache import (
     get_cached_teacher_events,
@@ -49,9 +52,13 @@ from app.services.optimate_cache import (
     invalidate_teacher_cache,
 )
 from app.services.teacher_event_sync import (
-    get_cancellations_map,
+    get_event_marks_map,
+    not_held_reason_label,
     resolve_student_product_id,
     save_event_cancellation,
+    save_event_mark,
+    sync_event_completed_in_optimate,
+    sync_event_not_held_in_optimate,
     teacher_can_access_student,
 )
 from app.services.optimate_profile import (
@@ -88,12 +95,24 @@ async def _resolve_teacher_id(user: User, db: AsyncSession) -> str:
     return str(contact.id)
 
 
-def _event_out(item, cancellation=None) -> EventOut:
+def _event_out(item, mark=None) -> EventOut:
     completion_label = item.completion_label
     is_completed = item.is_completed
-    if cancellation and completion_label == "Заплановано":
-        completion_label = "Скасовано"
-        is_completed = False
+    cancellation_reason = None
+    cancellation_note = None
+
+    if mark:
+        if mark.outcome == "completed":
+            completion_label = "Проведено"
+            is_completed = True
+            cancellation_reason = mark.reason_label or "Проведене заняття"
+            cancellation_note = mark.note or None
+        elif mark.outcome in ("not_held", "cancelled_planned"):
+            if completion_label == "Заплановано":
+                completion_label = "Скасовано"
+            is_completed = False
+            cancellation_reason = mark.reason_label or None
+            cancellation_note = mark.note or None
 
     return EventOut(
         id=item.id,
@@ -114,8 +133,8 @@ def _event_out(item, cancellation=None) -> EventOut:
         student_ids=list(getattr(item, "student_ids", []) or []),
         teacher_names=list(getattr(item, "teacher_names", []) or []),
         teacher_ids=list(getattr(item, "teacher_ids", []) or []),
-        cancellation_reason=cancellation.reason_label if cancellation else None,
-        cancellation_note=cancellation.note if cancellation else None,
+        cancellation_reason=cancellation_reason,
+        cancellation_note=cancellation_note,
     )
 
 
@@ -259,7 +278,7 @@ async def teacher_events(
         days_forward=days_forward,
         force_refresh=refresh,
     )
-    cancel_map = await get_cancellations_map(db, [e.id for e in items])
+    cancel_map = await get_event_marks_map(db, [e.id for e in items])
     return PaginatedEventsOut(
         data=[_event_out(e, cancel_map.get(e.id)) for e in items],
         total=total,
@@ -274,6 +293,16 @@ async def lesson_cancellation_reasons(
     _: User = Depends(require_role(UserRole.TEACHER)),
 ):
     return [LessonCancellationReasonOut(**item) for item in LESSON_CANCELLATION_REASONS]
+
+
+@router.get("/not-held-reasons", response_model=list[LessonNotHeldReasonOut])
+async def lesson_not_held_reasons(
+    _: User = Depends(require_role(UserRole.TEACHER)),
+):
+    return [
+        LessonNotHeldReasonOut(code=str(item["code"]), label=str(item["label"]))
+        for item in LESSON_NOT_HELD_REASONS
+    ]
 
 
 @router.post("/events", response_model=TeacherEventActionOut, status_code=201)
@@ -353,7 +382,73 @@ async def cancel_teacher_event(
         note=body.note,
     )
     invalidate_teacher_cache(teacher_id)
-    return TeacherEventActionOut(ok=True, event_id=event_id, message="Урок скасовано")
+    return TeacherEventActionOut(
+        ok=True,
+        event_id=event_id,
+        message="Урок скасовано",
+        optimate_synced=True,
+    )
+
+
+@router.post("/events/{event_id}/complete", response_model=TeacherEventActionOut)
+async def complete_teacher_event(
+    event_id: str,
+    body: TeacherEventCompleteIn,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_role(UserRole.TEACHER)),
+):
+    ensure_optimate_configured()
+    client = get_optimate_client()
+    teacher_id = await _resolve_teacher_id(current_user, db)
+
+    await save_event_mark(
+        db,
+        event_id=event_id,
+        teacher_id=teacher_id,
+        outcome="completed",
+        reason_code="completed",
+        reason_label="Проведене заняття",
+        note=body.note,
+    )
+    synced = await sync_event_completed_in_optimate(event_id)
+    invalidate_teacher_cache(teacher_id)
+    return TeacherEventActionOut(
+        ok=True,
+        event_id=event_id,
+        message="Урок відмічено як проведений",
+        optimate_synced=synced,
+    )
+
+
+@router.post("/events/{event_id}/not-held", response_model=TeacherEventActionOut)
+async def mark_teacher_event_not_held(
+    event_id: str,
+    body: TeacherEventNotHeldIn,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_role(UserRole.TEACHER)),
+):
+    ensure_optimate_configured()
+    if not any(item["code"] == body.reason_code for item in LESSON_NOT_HELD_REASONS):
+        raise HTTPException(status_code=400, detail="Невідома причина")
+
+    teacher_id = await _resolve_teacher_id(current_user, db)
+    await save_event_mark(
+        db,
+        event_id=event_id,
+        teacher_id=teacher_id,
+        outcome="not_held",
+        reason_code=body.reason_code,
+        reason_label=not_held_reason_label(body.reason_code),
+        note=body.note,
+    )
+    synced = await sync_event_not_held_in_optimate(event_id, body.reason_code)
+    invalidate_teacher_cache(teacher_id)
+    return TeacherEventActionOut(
+        ok=True,
+        event_id=event_id,
+        message="Заняття відмічено як таке, що не відбулось",
+        optimate_synced=synced,
+    )
 
 
 @router.get("/events/{event_id}/cancellation", response_model=EventCancellationOut)
@@ -362,12 +457,13 @@ async def get_event_cancellation(
     db: AsyncSession = Depends(get_db),
     _: User = Depends(require_role(UserRole.TEACHER)),
 ):
-    cancel_map = await get_cancellations_map(db, [event_id])
+    cancel_map = await get_event_marks_map(db, [event_id])
     row = cancel_map.get(event_id)
     if not row:
-        raise HTTPException(status_code=404, detail="Причину скасування не знайдено")
+        raise HTTPException(status_code=404, detail="Відмітку уроку не знайдено")
     return EventCancellationOut(
         optimate_event_id=row.optimate_event_id,
+        outcome=row.outcome,
         reason_code=row.reason_code,
         reason_label=row.reason_label,
         note=row.note or "",

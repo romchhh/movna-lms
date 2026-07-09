@@ -129,6 +129,27 @@ def _teacher_alert_message(phase: str, product_name: str, student_name: str) -> 
     return ""
 
 
+async def get_student_meeting_links_for_teacher(
+    db: AsyncSession,
+    student_optimate_id: str,
+    teacher_optimate_id: str,
+) -> MeetingLinksOut:
+    """Zoom / Miro для учня щодо конкретного викладача (персональні або глобальні)."""
+    teacher_id = str(teacher_optimate_id or "").strip()
+    if not teacher_id:
+        return MeetingLinksOut()
+
+    zoom_url, miro_url, _ = await _teacher_links(db, teacher_id)
+    lesson_url, board_url = await resolve_lesson_links_for_student_teacher(
+        db,
+        teacher_id,
+        student_optimate_id,
+        fallback_zoom=zoom_url,
+        fallback_miro=miro_url,
+    )
+    return MeetingLinksOut(zoom_url=lesson_url, miro_url=board_url)
+
+
 async def get_student_lesson_alert(
     db: AsyncSession,
     student_optimate_id: str,

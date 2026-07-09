@@ -94,64 +94,6 @@ export default function StudentDashboard() {
       </div>
 
       <div className="g2 dash-grid">
-        <div className="card">
-          <div className="card-title">Баланси з Optimate</div>
-          {!loading && (!overview || overview.balances.length === 0) && (
-            <p style={{ color: 'var(--tx3)', fontSize: 14 }}>Баланси не знайдено</p>
-          )}
-          {overview?.balances.map(product => {
-            const accent = PRODUCT_ACCENT[product.product_type] ?? PRODUCT_ACCENT[1]
-            const purchased = product.lessons_total > 0
-              ? product.lessons_total
-              : product.lessons_remaining + product.lessons_used
-            const pct = purchased > 0
-              ? (product.lessons_remaining / purchased) * 100
-              : 0
-            return (
-              <div key={product.product_id || product.product_name} className="optimate-dash-balance-row">
-                <div>
-                  <div style={{ fontSize: 14, fontWeight: 600 }}>{product.product_name}</div>
-                  <div style={{ fontSize: 12, color: 'var(--tx2)', marginTop: 2 }}>
-                    <Badge variant={accent.badge}>{product.product_type_label}</Badge>
-                    {' '}
-                    Залишок {product.lessons_remaining} · Використано {product.lessons_used}
-                    {purchased > 0 ? ` · Куплено ${purchased}` : ''}
-                  </div>
-                </div>
-                <div className="optimate-dash-balance-progress" style={{ minWidth: 120 }}>
-                  <ProgressBar pct={pct} color={accent.color} small />
-                </div>
-              </div>
-            )
-          })}
-          <Link href="/student/balance" className="btn btn-secondary btn-full" style={{ marginTop: 12, textDecoration: 'none', justifyContent: 'center' }}>
-            Детальний баланс і транзакції
-          </Link>
-        </div>
-
-        <div className="card">
-          <div className="card-title">Календар занять</div>
-          <EventsCalendar
-            events={calendarEvents}
-            loading={loading}
-            emptyLabel="Занять не знайдено"
-            defaultView="week"
-            embed
-            enableLessonRequests
-            enableStudentHomework
-            enableCurriculumTopic
-            curriculumAudience="student"
-            onOpenHomework={id => setHwModalId(id)}
-          />
-          <Link
-            href="/student/schedule"
-            className="btn btn-secondary btn-full"
-            style={{ marginTop: 12, textDecoration: 'none', justifyContent: 'center' }}
-          >
-            Повний розклад
-          </Link>
-        </div>
-
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           <div className="card">
             <div className="card-title">Матеріали від викладача</div>
@@ -200,29 +142,88 @@ export default function StudentDashboard() {
               </>
             )}
           </div>
+        </div>
 
-          <div className="card">
-            <div className="card-title">Останні транзакції</div>
-            {!overview?.recent_transactions.length && !loading && (
-              <p style={{ color: 'var(--tx3)', fontSize: 14 }}>Транзакцій немає</p>
-            )}
-            {overview?.recent_transactions.map(tx => (
-              <div key={tx.id} className="optimate-tx-row optimate-tx-row--compact">
-                <div className="optimate-tx-body">
-                  <div className="optimate-tx-title">{tx.type_label}</div>
-                  <div className="optimate-tx-sub">{tx.product_name || '—'}</div>
-                </div>
-                {tx.lesson_count !== 0 && (
-                  <div style={{ fontSize: 12, fontWeight: 600, color: tx.is_credit ? 'var(--td)' : 'var(--rd)' }}>
-                    {tx.is_credit ? '+' : '−'}{Math.abs(tx.lesson_count)} ур.
+        <div className="card">
+          <div className="card-title">Календар занять</div>
+          <EventsCalendar
+            events={calendarEvents}
+            loading={loading}
+            emptyLabel="Занять не знайдено"
+            defaultView="week"
+            embed
+            enableLessonRequests
+            enableMeetingLinks
+            enableStudentHomework
+            enableCurriculumTopic
+            curriculumAudience="student"
+            onOpenHomework={id => setHwModalId(id)}
+          />
+          <Link
+            href="/student/schedule"
+            className="btn btn-secondary btn-full"
+            style={{ marginTop: 12, textDecoration: 'none', justifyContent: 'center' }}
+          >
+            Повний розклад
+          </Link>
+        </div>
+
+        <div className="card">
+          <div className="card-title">Баланси з Optimate</div>
+          {!loading && (!overview || overview.balances.length === 0) && (
+            <p style={{ color: 'var(--tx3)', fontSize: 14 }}>Баланси не знайдено</p>
+          )}
+          {overview?.balances.map(product => {
+            const accent = PRODUCT_ACCENT[product.product_type] ?? PRODUCT_ACCENT[1]
+            const purchased = product.lessons_total > 0
+              ? product.lessons_total
+              : product.lessons_remaining + product.lessons_used
+            const pct = purchased > 0
+              ? (product.lessons_remaining / purchased) * 100
+              : 0
+            return (
+              <div key={product.product_id || product.product_name} className="optimate-dash-balance-row">
+                <div>
+                  <div style={{ fontSize: 14, fontWeight: 600 }}>{product.product_name}</div>
+                  <div style={{ fontSize: 12, color: 'var(--tx2)', marginTop: 2 }}>
+                    <Badge variant={accent.badge}>{product.product_type_label}</Badge>
+                    {' '}
+                    Залишок {product.lessons_remaining} · Використано {product.lessons_used}
+                    {purchased > 0 ? ` · Куплено ${purchased}` : ''}
                   </div>
-                )}
+                </div>
+                <div className="optimate-dash-balance-progress" style={{ minWidth: 120 }}>
+                  <ProgressBar pct={pct} color={accent.color} small />
+                </div>
               </div>
-            ))}
-            <Link href="/student/balance" className="btn btn-secondary btn-full" style={{ marginTop: 10, textDecoration: 'none', justifyContent: 'center' }}>
-              Вся історія
-            </Link>
-          </div>
+            )
+          })}
+          <Link href="/student/balance" className="btn btn-secondary btn-full" style={{ marginTop: 12, textDecoration: 'none', justifyContent: 'center' }}>
+            Детальний баланс і транзакції
+          </Link>
+        </div>
+
+        <div className="card">
+          <div className="card-title">Останні транзакції</div>
+          {!overview?.recent_transactions.length && !loading && (
+            <p style={{ color: 'var(--tx3)', fontSize: 14 }}>Транзакцій немає</p>
+          )}
+          {overview?.recent_transactions.map(tx => (
+            <div key={tx.id} className="optimate-tx-row optimate-tx-row--compact">
+              <div className="optimate-tx-body">
+                <div className="optimate-tx-title">{tx.type_label}</div>
+                <div className="optimate-tx-sub">{tx.product_name || '—'}</div>
+              </div>
+              {tx.lesson_count !== 0 && (
+                <div style={{ fontSize: 12, fontWeight: 600, color: tx.is_credit ? 'var(--td)' : 'var(--rd)' }}>
+                  {tx.is_credit ? '+' : '−'}{Math.abs(tx.lesson_count)} ур.
+                </div>
+              )}
+            </div>
+          ))}
+          <Link href="/student/balance" className="btn btn-secondary btn-full" style={{ marginTop: 10, textDecoration: 'none', justifyContent: 'center' }}>
+            Вся історія
+          </Link>
         </div>
       </div>
       <HomeworkStudentModal

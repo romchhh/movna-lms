@@ -693,7 +693,16 @@ class OptimateClient:
             completion_label = COMPLETION_LABELS["planned"]
 
         product = item.get("product") if isinstance(item.get("product"), dict) else {}
-        product_type = item.get("productType") or product.get("productType")
+        products = item.get("products") if isinstance(item.get("products"), list) else []
+        product_from_list = products[0] if products and isinstance(products[0], dict) else {}
+
+        product_type = (
+            item.get("productType")
+            or product.get("productType")
+            or product.get("type")
+            or product_from_list.get("productType")
+            or product_from_list.get("type")
+        )
         product_type_int = int(product_type) if product_type is not None else None
 
         teacher_name: Optional[str] = None
@@ -725,7 +734,21 @@ class OptimateClient:
             if teacher_name:
                 teacher_names.append(teacher_name)
 
-        product_name = item.get("productName") or product.get("productName") or product.get("name")
+        product_name = (
+            item.get("productName")
+            or product.get("productName")
+            or product.get("name")
+            or product_from_list.get("productName")
+            or product_from_list.get("name")
+        )
+        product_id = (
+            item.get("productId")
+            or product.get("productId")
+            or product.get("id")
+            or product_from_list.get("productId")
+            or product_from_list.get("id")
+            or ""
+        )
 
         student_names: list[str] = []
         student_ids: list[str] = []
@@ -750,6 +773,8 @@ class OptimateClient:
             schedule_class = "speaking_club"
         elif product_type_int == 4:
             schedule_class = "pair"
+        elif len(student_ids) > 1 and product_type_int is None:
+            schedule_class = "group"
 
         return ParsedEvent(
             id=str(item.get("id") or ""),
@@ -757,7 +782,7 @@ class OptimateClient:
             starts_at=str(item.get("startsAt") or ""),
             ends_at=str(item.get("endsAt") or ""),
             duration=int(item.get("duration") or 0),
-            product_id=str(item.get("productId") or product.get("productId") or "") or None,
+            product_id=str(product_id) or None,
             product_name=product_name,
             product_type=product_type_int,
             product_type_label=PRODUCT_TYPE_LABELS.get(product_type_int, "Урок") if product_type_int else "Урок",
@@ -1254,6 +1279,56 @@ class OptimateClient:
                 return updated, 200
 
         return None, delete_status if delete_status >= 400 else 502
+
+    async def complete_event(
+        self,
+        event_id: str | int,
+        *,
+        verbose: bool = False,
+    ) -> tuple[Optional[dict[str, Any]], int]:
+        """Відмітити урок як проведений у Optimate."""
+        updated, status = await self._patch(
+            f"/api/v1/events/{event_id}",
+            {"isCompleted": True},
+            verbose=verbose,
+        )
+        if status != 200:
+            return updated, status
+
+        raw = await self._get(f"/api/v1/events/{event_id}", verbose=verbose)
+        if isinstance(raw, dict):
+            data = raw.get("data") if isinstance(raw.get("data"), dict) else raw
+            if isinstance(data, dict) and data.get("isCompleted") is True:
+                return updated, 200
+
+        return updated, 502
+
+    async def mark_event_not_held(
+        self,
+        event_id: str | int,
+        cancellation_reason: int,
+        *,
+        verbose: bool = False,
+    ) -> tuple[Optional[dict[str, Any]], int]:
+        """Відмітити урок як скасований (не відбувся) з причиною."""
+        updated, status = await self._patch(
+            f"/api/v1/events/{event_id}",
+            {
+                "isCompleted": False,
+                "cancellationReason": int(cancellation_reason),
+            },
+            verbose=verbose,
+        )
+        if status != 200:
+            return updated, status
+
+        raw = await self._get(f"/api/v1/events/{event_id}", verbose=verbose)
+        if isinstance(raw, dict):
+            data = raw.get("data") if isinstance(raw.get("data"), dict) else raw
+            if isinstance(data, dict) and data.get("isCompleted") is False:
+                return updated, 200
+
+        return updated, 502
 
     async def get_group_students(
         self,

@@ -7,7 +7,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.teacher_event_cancellation import TeacherEventCancellation
 from app.services.optimate import OptimateClient, get_optimate_client
-from app.services.optimate_labels import LESSON_CANCELLATION_REASONS
+from app.services.optimate_labels import (
+    LESSON_CANCELLATION_REASONS,
+    LESSON_MARK_OUTCOMES,
+    LESSON_NOT_HELD_REASONS,
+)
 from app.services.optimate_parsers import student_belongs_to_teacher
 
 
@@ -16,6 +20,20 @@ def cancellation_reason_label(code: str) -> str:
         if item["code"] == code:
             return item["label"]
     return code
+
+
+def not_held_reason_label(code: str) -> str:
+    for item in LESSON_NOT_HELD_REASONS:
+        if item["code"] == code:
+            return str(item["label"])
+    return code
+
+
+def not_held_optimate_reason(code: str) -> Optional[int]:
+    for item in LESSON_NOT_HELD_REASONS:
+        if item["code"] == code:
+            return int(item["optimate_reason"])
+    return None
 
 
 async def teacher_can_access_student(
@@ -79,6 +97,46 @@ def resolve_student_product_id(student_raw: dict[str, Any], product_id: Optional
     return None
 
 
+async def save_event_mark(
+    db: AsyncSession,
+    *,
+    event_id: str,
+    teacher_id: str,
+    outcome: str,
+    reason_code: str = "",
+    reason_label: str = "",
+    note: str = "",
+) -> TeacherEventCancellation:
+    if outcome not in LESSON_MARK_OUTCOMES:
+        raise ValueError(f"Unknown outcome: {outcome}")
+
+    existing = await db.execute(
+        select(TeacherEventCancellation).where(
+            TeacherEventCancellation.optimate_event_id == event_id,
+        )
+    )
+    row = existing.scalar_one_or_none()
+    if row:
+        row.outcome = outcome
+        row.reason_code = reason_code
+        row.reason_label = reason_label
+        row.note = note.strip()
+        row.teacher_optimate_id = teacher_id
+        return row
+
+    row = TeacherEventCancellation(
+        optimate_event_id=event_id,
+        teacher_optimate_id=teacher_id,
+        outcome=outcome,
+        reason_code=reason_code,
+        reason_label=reason_label,
+        note=note.strip(),
+    )
+    db.add(row)
+    await db.flush()
+    return row
+
+
 async def save_event_cancellation(
     db: AsyncSession,
     *,
@@ -87,33 +145,18 @@ async def save_event_cancellation(
     reason_code: str,
     note: str = "",
 ) -> TeacherEventCancellation:
-    existing = await db.execute(
-        select(TeacherEventCancellation).where(
-            TeacherEventCancellation.optimate_event_id == event_id,
-        )
-    )
-    row = existing.scalar_one_or_none()
-    label = cancellation_reason_label(reason_code)
-    if row:
-        row.reason_code = reason_code
-        row.reason_label = label
-        row.note = note.strip()
-        row.teacher_optimate_id = teacher_id
-        return row
-
-    row = TeacherEventCancellation(
-        optimate_event_id=event_id,
-        teacher_optimate_id=teacher_id,
+    return await save_event_mark(
+        db,
+        event_id=event_id,
+        teacher_id=teacher_id,
+        outcome="cancelled_planned",
         reason_code=reason_code,
-        reason_label=label,
-        note=note.strip(),
+        reason_label=cancellation_reason_label(reason_code),
+        note=note,
     )
-    db.add(row)
-    await db.flush()
-    return row
 
 
-async def get_cancellations_map(
+async def get_event_marks_map(
     db: AsyncSession,
     event_ids: list[str],
 ) -> dict[str, TeacherEventCancellation]:
@@ -126,3 +169,25 @@ async def get_cancellations_map(
     )
     rows = result.scalars().all()
     return {row.optimate_event_id: row for row in rows}
+
+
+async def get_cancellations_map(
+    db: AsyncSession,
+    event_ids: list[str],
+) -> dict[str, TeacherEventCancellation]:
+    return await get_event_marks_map(db, event_ids)
+
+
+async def sync_event_completed_in_optimate(event_id: str) -> bool:
+    client = get_optimate_client()
+    _, status = await client.complete_event(event_id)
+    return status == 200
+
+
+async def sync_event_not_held_in_optimate(event_id: str, reason_code: str) -> bool:
+    optimate_reason = not_held_optimate_reason(reason_code)
+    if optimate_reason is None:
+        return False
+    client = get_optimate_client()
+    _, status = await client.mark_event_not_held(event_id, optimate_reason)
+    return status == 200

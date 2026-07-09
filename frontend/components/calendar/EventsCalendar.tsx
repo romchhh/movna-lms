@@ -5,15 +5,18 @@ import { TeacherStudentDetailModal } from '@/components/teacher/TeacherStudentDe
 import { StatusBadge } from '@/components/shared/StatusBadge'
 import { Badge } from '@/components/shared/UI'
 import { IconButton, ChevronLeftIcon, ChevronRightIcon } from '@/components/shared/Icons'
-import { CalendarFormatLegend } from '@/components/calendar/CalendarFormatLegend'
+import { CalendarFormatFilter } from '@/components/calendar/CalendarFormatLegend'
 import { EventDetailModal } from '@/components/calendar/EventDetailModal'
 import { EventFormatBadge } from '@/components/calendar/EventFormatBadge'
 import {
   calendarEventFormatModifier,
   eventStatusEmoji,
+  allScheduleClassesEnabled,
+  filterEventsByScheduleClass,
   type CalendarEvent,
   type CalendarParticipant,
   type CalendarViewMode,
+  type ScheduleClassKey,
 } from '@/lib/calendar-types'
 import { adminOptimateApi } from '@/lib/admin-optimate-api'
 import { teacherOptimateApi } from '@/lib/teacher-optimate-api'
@@ -58,16 +61,21 @@ interface EventsCalendarProps {
   showParticipants?: boolean
   /** Учень: кнопки скасування / перенесення уроку */
   enableLessonRequests?: boolean
+  /** Учень: Zoom / Miro у картці уроку */
+  enableMeetingLinks?: boolean
   enableHomework?: boolean
   enableStudentHomework?: boolean
   enableCurriculumTopic?: boolean
   curriculumAudience?: 'teacher' | 'student'
   onOpenHomework?: (submissionId: number) => void
-  /** Легенда: індивідуальний / груповий / … */
+  /** Фільтр форматів занять (індивідуальний / груповий / …) */
   showFormatLegend?: boolean
   /** Викладач: прямe скасування уроку в Optimate */
   enableTeacherCancel?: boolean
   onTeacherCancel?: (event: CalendarEvent) => void
+  /** Викладач: відмітка проведеного / непроведеного заняття */
+  enableTeacherMarking?: boolean
+  onTeacherMark?: (event: CalendarEvent) => void
 }
 
 function statusBadge(variant?: CalendarEvent['status_variant']) {
@@ -500,20 +508,29 @@ export function EventsCalendar({
   entityLinks,
   showParticipants = false,
   enableLessonRequests = false,
+  enableMeetingLinks = false,
   enableHomework = false,
   enableStudentHomework = false,
   enableCurriculumTopic = false,
   curriculumAudience = 'student',
   onOpenHomework,
-  showFormatLegend = !embed,
+  showFormatLegend = true,
   enableTeacherCancel = false,
   onTeacherCancel,
+  enableTeacherMarking = false,
+  onTeacherMark,
 }: EventsCalendarProps) {
   const today = startOfDay(new Date())
   const [view, setView] = useState<CalendarViewMode>(defaultView)
   const [anchor, setAnchor] = useState(today)
   const [selectedKey, setSelectedKey] = useState(toDateKey(today))
   const [detailEvent, setDetailEvent] = useState<CalendarEvent | null>(null)
+  const [enabledFormats, setEnabledFormats] = useState<Set<ScheduleClassKey>>(() => allScheduleClassesEnabled())
+
+  const visibleEvents = useMemo(
+    () => filterEventsByScheduleClass(events, enabledFormats),
+    [events, enabledFormats],
+  )
 
   const [entityKind, setEntityKind] = useState<'student' | 'teacher' | null>(null)
   const [entityId, setEntityId] = useState<string | null>(null)
@@ -621,10 +638,10 @@ export function EventsCalendar({
   }
 
   const selectedEvents = useMemo(() => {
-    return events
+    return visibleEvents
       .filter(e => eventDateKey(e.starts_at) === selectedKey)
       .sort((a, b) => a.starts_at.localeCompare(b.starts_at))
-  }, [events, selectedKey])
+  }, [visibleEvents, selectedKey])
 
   const activeEventId = detailEvent?.id ?? null
 
@@ -641,7 +658,13 @@ export function EventsCalendar({
           accent={accent}
         />
 
-        {showFormatLegend && !loading && events.length > 0 && <CalendarFormatLegend />}
+        {showFormatLegend && !loading && events.length > 0 && (
+          <CalendarFormatFilter
+            events={events}
+            enabled={enabledFormats}
+            onChange={setEnabledFormats}
+          />
+        )}
 
         {loading && (
           <div className="cal-loading">
@@ -654,12 +677,16 @@ export function EventsCalendar({
           <div className="cal-empty">{emptyLabel}</div>
         )}
 
-        {!loading && events.length > 0 && (
+        {!loading && events.length > 0 && visibleEvents.length === 0 && (
+          <div className="cal-empty">Немає занять обраних форматів — увімкніть тип у фільтрі вище</div>
+        )}
+
+        {!loading && visibleEvents.length > 0 && (
           <>
             {view === 'week' && (
               <WeekView
                 anchor={anchor}
-                events={events}
+                events={visibleEvents}
                 selectedKey={selectedKey}
                 activeEventId={activeEventId}
                 onSelectDay={handleSelectDay}
@@ -670,7 +697,7 @@ export function EventsCalendar({
             {view === 'month' && (
               <MonthView
                 anchor={anchor}
-                events={events}
+                events={visibleEvents}
                 selectedKey={selectedKey}
                 onSelectDay={handleSelectDay}
                 onSelectEvent={openEvent}
@@ -679,7 +706,7 @@ export function EventsCalendar({
             )}
             {view === 'agenda' && (
               <AgendaView
-                events={events}
+                events={visibleEvents}
                 anchor={anchor}
                 embed={embed}
                 activeEventId={activeEventId}
@@ -728,6 +755,7 @@ export function EventsCalendar({
         onParticipantClick={entityLinks ? openParticipant : undefined}
         allowEscape={!entityId}
         enableLessonRequests={enableLessonRequests}
+        enableMeetingLinks={enableMeetingLinks}
         enableHomework={enableHomework}
         enableStudentHomework={enableStudentHomework}
         enableCurriculumTopic={enableCurriculumTopic}
@@ -737,6 +765,11 @@ export function EventsCalendar({
         onTeacherCancel={ev => {
           setDetailEvent(null)
           onTeacherCancel?.(ev)
+        }}
+        enableTeacherMarking={enableTeacherMarking}
+        onTeacherMark={ev => {
+          setDetailEvent(null)
+          onTeacherMark?.(ev)
         }}
       />
 

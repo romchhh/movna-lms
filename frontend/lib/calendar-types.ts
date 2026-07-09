@@ -103,6 +103,40 @@ export const SCHEDULE_CLASS_SHORT: Record<string, string> = {
   pair: 'Парний',
 }
 
+/** Усі формати занять з Optimate (productType 1–4) */
+export const SCHEDULE_CLASS_ORDER = ['individual', 'group', 'pair', 'speaking_club'] as const
+export type ScheduleClassKey = (typeof SCHEDULE_CLASS_ORDER)[number]
+
+export const SCHEDULE_CLASS_PRODUCT_TYPE: Record<ScheduleClassKey, number> = {
+  individual: 1,
+  group: 2,
+  pair: 4,
+  speaking_club: 3,
+}
+
+export function normalizeScheduleClass(scheduleClass?: string | null): ScheduleClassKey {
+  if (scheduleClass && SCHEDULE_CLASS_ORDER.includes(scheduleClass as ScheduleClassKey)) {
+    return scheduleClass as ScheduleClassKey
+  }
+  return 'individual'
+}
+
+export function eventScheduleClass(event: Pick<CalendarEvent, 'schedule_class'>): ScheduleClassKey {
+  return normalizeScheduleClass(event.schedule_class)
+}
+
+export function allScheduleClassesEnabled(): Set<ScheduleClassKey> {
+  return new Set(SCHEDULE_CLASS_ORDER)
+}
+
+export function filterEventsByScheduleClass(
+  events: CalendarEvent[],
+  enabled: ReadonlySet<string>,
+): CalendarEvent[] {
+  if (enabled.size === 0) return []
+  return events.filter(e => enabled.has(eventScheduleClass(e)))
+}
+
 /** Optimate productType → формат заняття */
 export function scheduleClassFromProductType(productType?: number | null): string {
   if (productType === 2) return 'group'

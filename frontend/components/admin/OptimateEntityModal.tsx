@@ -2,17 +2,20 @@
 
 import { StatusBadge } from '@/components/shared/StatusBadge'
 import { Badge } from '@/components/shared/UI'
-import { CacheMeta, formatCacheAge } from '@/lib/optimate-api'
+import { CacheMeta, formatCacheAge, formatKyivDateTime } from '@/lib/optimate-api'
 import { ProductSummary, stripHtml, zipStudentTeachers } from '@/lib/admin-optimate-api'
 import { PortalLoginPasswordPanel } from '@/components/admin/PortalLoginPasswordPanel'
 import { OptimateNotesList } from '@/components/admin/OptimateNotesList'
 import { TeacherLessonStatsPanel } from '@/components/teacher/TeacherLessonStatsPanel'
+import { TeacherSalariesPanel } from '@/components/teacher/TeacherSalariesPanel'
 import { CloseIcon, IconButton, RefreshIcon } from '@/components/shared/Icons'
 import { TeacherAboutBlock, UserAvatar } from '@/components/shared/UserAvatar'
 import { useLmsProfile } from '@/hooks/useLmsProfiles'
 import type { TeacherLessonStats } from '@/lib/teacher-optimate-api'
 import { studentDisplayName, teacherDisplayName } from '@/lib/person-display-name'
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
+
+type TeacherAdminTab = 'profile' | 'salary'
 
 interface OptimateEntityModalProps {
   open: boolean
@@ -119,9 +122,12 @@ export function OptimateEntityModal({
 }: OptimateEntityModalProps) {
   const resolvedEntityId = entityId ?? (data?.id != null ? String(data.id) : null)
   const { profile: lmsProfile } = useLmsProfile(resolvedEntityId ?? undefined)
+  const showTeacherTabs = audience === 'admin' && kind === 'teacher' && Boolean(resolvedEntityId)
+  const [teacherTab, setTeacherTab] = useState<TeacherAdminTab>('profile')
 
   useEffect(() => {
     if (!open) return
+    setTeacherTab('profile')
     function onKey(e: KeyboardEvent) {
       if (e.key === 'Escape') onClose()
     }
@@ -201,7 +207,34 @@ export function OptimateEntityModal({
           {profileAddon}
         </div>
 
+        {showTeacherTabs && (
+          <div className="optimate-entity-tabs" role="tablist" aria-label="Розділи викладача">
+            <button
+              type="button"
+              role="tab"
+              aria-selected={teacherTab === 'profile'}
+              className={`optimate-entity-tab${teacherTab === 'profile' ? ' optimate-entity-tab--active' : ''}`}
+              onClick={() => setTeacherTab('profile')}
+            >
+              Профіль
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={teacherTab === 'salary'}
+              className={`optimate-entity-tab${teacherTab === 'salary' ? ' optimate-entity-tab--active' : ''}`}
+              onClick={() => setTeacherTab('salary')}
+            >
+              Зарплата
+            </button>
+          </div>
+        )}
+
         <div className="optimate-modal-body">
+          {teacherTab === 'salary' && showTeacherTabs ? (
+            <TeacherSalariesPanel embedded teacherId={resolvedEntityId!} />
+          ) : (
+            <>
           {loading && !data && <p>Завантаження деталей...</p>}
           {error && <div className="alert">{error}</div>}
 
@@ -255,6 +288,10 @@ export function OptimateEntityModal({
 
               {audience === 'admin' && resolvedEntityId && (
                 <DetailSection title="Вхід у LMS">
+                  <KeyValue
+                    label="Останній вхід (Київ)"
+                    value={formatKyivDateTime(data.last_login_at as string | null | undefined)}
+                  />
                   <PortalLoginPasswordPanel kind={kind} optimateId={resolvedEntityId} />
                 </DetailSection>
               )}
@@ -308,6 +345,8 @@ export function OptimateEntityModal({
 
               {extraSections}
 
+            </>
+          )}
             </>
           )}
         </div>

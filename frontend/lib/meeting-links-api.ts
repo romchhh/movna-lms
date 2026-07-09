@@ -61,6 +61,13 @@ export const studentLessonAlertApi = {
   },
 }
 
+export const studentMeetingLinksApi = {
+  forTeacher(teacherId: string) {
+    const q = new URLSearchParams({ teacher_id: teacherId })
+    return apiFetch<MeetingLinks>(`/api/student/meeting-links?${q}`)
+  },
+}
+
 export const teacherLessonAlertApi = {
   get() {
     return apiFetch<LessonAlert>('/api/teacher/lesson-alert')

@@ -17,4 +17,6 @@ class TeacherEventCancellation(Base):
     reason_code: Mapped[str] = mapped_column(String(64))
     reason_label: Mapped[str] = mapped_column(String(255))
     note: Mapped[str] = mapped_column(Text, default="")
+    # cancelled_planned | completed | not_held
+    outcome: Mapped[str] = mapped_column(String(32), default="cancelled_planned")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

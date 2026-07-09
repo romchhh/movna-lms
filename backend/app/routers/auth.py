@@ -24,6 +24,7 @@ from app.services.auth_flow import (
     verify_optimate_for_user,
     sync_user_from_optimate,
     get_or_create_user_from_optimate,
+    record_user_login,
 )
 from app.services.optimate import get_optimate_client
 
@@ -77,6 +78,7 @@ async def login(body: LoginRequest, db: AsyncSession = Depends(get_db)):
 
     contact = await verify_optimate_for_user(user)
     await sync_user_from_optimate(user, contact)
+    record_user_login(user)
 
     access_ttl = (
         timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
@@ -168,6 +170,7 @@ async def google_callback(code: str | None = None, error: str | None = None, db:
 
         role = UserRole.STUDENT if role_str == "student" else UserRole.TEACHER
         user = await get_or_create_user_from_optimate(db, email, role, contact)
+        record_user_login(user)
 
         jwt_access = create_access_token(user.id, user.role.value, user.optimeit_id or None)
         jwt_refresh = create_refresh_token(user.id)
