@@ -668,8 +668,16 @@ export function EventsCalendar({
 
         {loading && (
           <div className="cal-loading">
-            <span className="cal-loading-spinner" />
-            Завантаження календаря...
+            <div className="movna-loading-mark movna-loading-mark--sm" aria-hidden>
+              <img src="/branding/little_logo.svg" alt="" width={40} height={24} />
+              <span className="movna-loading-ring" />
+            </div>
+            <p className="movna-loading-label">Завантаження календаря…</p>
+            <div className="movna-loading-skeleton" aria-hidden>
+              <div className="movna-loading-bone" style={{ width: '88%' }} />
+              <div className="movna-loading-bone" style={{ width: '72%', animationDelay: '90ms' }} />
+              <div className="movna-loading-bone" style={{ width: '64%', animationDelay: '180ms' }} />
+            </div>
           </div>
         )}
 

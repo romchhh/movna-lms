@@ -356,6 +356,10 @@ export function EventDetailModal({
 
           {canTeacherMark && onTeacherMark && (
             <div className="cal-modal-actions cal-modal-actions--mark">
+              <p className="cal-modal-mark-hint" style={{ marginBottom: 10 }}>
+                Нарахування ЗП відбувається в Optimate. Тут можна зберегти відмітку в LMS; якщо Optimate
+                не оновиться автоматично — відмітьте «Проведене заняття» там же.
+              </p>
               <button
                 type="button"
                 className="btn btn-sm btn-primary"
@@ -363,9 +367,6 @@ export function EventDetailModal({
               >
                 Відмітити заняття
               </button>
-              <p className="cal-modal-mark-hint">
-                Позначте, чи урок відбувся — це потрібно для нарахування зарплати
-              </p>
             </div>
           )}
 

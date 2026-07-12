@@ -1,6 +1,7 @@
 'use client'
 
 import { MarkdownView } from '@/components/homework/MarkdownView'
+import { Empty } from '@/components/shared/UI'
 import type { FaqPublicItem } from '@/lib/faq-api'
 import { useId, useState } from 'react'
 
@@ -15,7 +16,7 @@ export function FaqList({ items, loading, emptyLabel = 'Питань поки н
   const [openId, setOpenId] = useState<number | null>(items[0]?.id ?? null)
 
   if (loading) {
-    return <p className="faq-empty">Завантаження…</p>
+    return <Empty label="Завантаження…" />
   }
 
   if (!items.length) {

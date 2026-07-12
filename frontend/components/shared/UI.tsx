@@ -1,5 +1,6 @@
 import React from 'react'
 import { ChevronLeftIcon, ChevronRightIcon, IconButton } from './Icons'
+import { LoadingState, looksLikeLoadingLabel } from './LoadingState'
 
 // ── StatCard ────────────────────────────────────────────────────────────────
 interface StatCardProps {
@@ -111,6 +112,10 @@ export function Pagination({
 
 // ── Empty state ──────────────────────────────────────────────────────────────
 export function Empty({ label }: { label: string }) {
+  if (looksLikeLoadingLabel(label)) {
+    return <LoadingState label={label} variant="block" />
+  }
+
   return (
     <div className="empty-state" role="status">
       <div className="empty-state-icon" aria-hidden>

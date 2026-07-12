@@ -1,6 +1,8 @@
 """
 Optimate CRM API client.
 
+Public API docs: https://api.optimate.online/api/docs/public/
+
 Перевіряє наявність студента / викладача за email або телефоном
 через публічні ендпоінти /api/v1/students та /api/v1/teachers.
 """
@@ -22,6 +24,8 @@ from app.services.optimate_labels import (
     TRANSACTION_DEBIT_TYPES,
     TRANSACTION_TYPE_LABELS,
 )
+
+OPTIMATE_PUBLIC_API_DOCS = "https://api.optimate.online/api/docs/public/"
 
 
 @dataclass
@@ -1254,8 +1258,11 @@ class OptimateClient:
     ) -> tuple[Optional[dict[str, Any]], int]:
         """Скасувати урок у Optimate.
 
-        Заплановані уроки: DELETE (PATCH isCompleted=false повертає 200, але не змінює подію).
-        Проведені уроки: PATCH isCompleted=false, якщо DELETE недоступний.
+        Public API (Events): лише GET, POST, DELETE — без PATCH.
+        Документація: https://api.optimate.online/api/docs/public/
+
+        Заплановані уроки: DELETE /api/v1/events/{id}.
+        PATCH isCompleted=false існує на сервері, але не в Public API і для planned не працює.
         """
         deleted, delete_status = await self._delete(
             f"/api/v1/events/{event_id}",
@@ -1280,28 +1287,62 @@ class OptimateClient:
 
         return None, delete_status if delete_status >= 400 else 502
 
+    @staticmethod
+    def _extract_event_data(raw: Optional[dict[str, Any]]) -> Optional[dict[str, Any]]:
+        if not isinstance(raw, dict):
+            return None
+        data = raw.get("data")
+        return data if isinstance(data, dict) else raw
+
+    async def get_event_detail(
+        self,
+        event_id: str | int,
+        *,
+        verbose: bool = False,
+    ) -> Optional[dict[str, Any]]:
+        return await self._get(
+            f"/api/v1/events/{event_id}",
+            params={"include": "students,products,teachers"},
+            verbose=verbose,
+        )
+
+    async def _event_is_completed(
+        self,
+        event_id: str | int,
+        *,
+        expected: Any,
+        verbose: bool = False,
+    ) -> bool:
+        raw = await self._get(f"/api/v1/events/{event_id}", verbose=verbose)
+        data = self._extract_event_data(raw)
+        return isinstance(data, dict) and data.get("isCompleted") is expected
+
     async def complete_event(
         self,
         event_id: str | int,
         *,
         verbose: bool = False,
     ) -> tuple[Optional[dict[str, Any]], int]:
-        """Відмітити урок як проведений у Optimate."""
-        updated, status = await self._patch(
-            f"/api/v1/events/{event_id}",
-            {"isCompleted": True},
-            verbose=verbose,
-        )
-        if status != 200:
-            return updated, status
+        """Відмітити урок як проведений у Optimate.
 
-        raw = await self._get(f"/api/v1/events/{event_id}", verbose=verbose)
-        if isinstance(raw, dict):
-            data = raw.get("data") if isinstance(raw.get("data"), dict) else raw
-            if isinstance(data, dict) and data.get("isCompleted") is True:
-                return updated, 200
+        Public API не має ендпоінта для відмітки проведення (лише GET/POST/DELETE events).
+        Секція «lessons and attendance» не містить PATCH/POST complete.
+        """
+        detail = self._extract_event_data(await self.get_event_detail(event_id, verbose=verbose))
+        if not detail:
+            return None, 404
+        if detail.get("isCompleted") is True:
+            return detail, 200
 
-        return updated, 502
+        if verbose:
+            print(
+                f"[Optimate] complete_event #{event_id}: "
+                f"not available in Public API ({OPTIMATE_PUBLIC_API_DOCS})"
+            )
+        return {
+            "success": False,
+            "message": "Public API does not expose lesson completion marking",
+        }, 501
 
     async def mark_event_not_held(
         self,
@@ -1310,25 +1351,26 @@ class OptimateClient:
         *,
         verbose: bool = False,
     ) -> tuple[Optional[dict[str, Any]], int]:
-        """Відмітити урок як скасований (не відбувся) з причиною."""
-        updated, status = await self._patch(
-            f"/api/v1/events/{event_id}",
-            {
-                "isCompleted": False,
-                "cancellationReason": int(cancellation_reason),
-            },
-            verbose=verbose,
-        )
-        if status != 200:
-            return updated, status
+        """Відмітити урок як скасований (не відбувся) з причиною.
 
-        raw = await self._get(f"/api/v1/events/{event_id}", verbose=verbose)
-        if isinstance(raw, dict):
-            data = raw.get("data") if isinstance(raw.get("data"), dict) else raw
-            if isinstance(data, dict) and data.get("isCompleted") is False:
-                return updated, 200
+        Public API не має ендпоінта для attendance/cancellation reason на events.
+        DELETE /api/v1/events/{id} лише видаляє урок, без причини та без нарахування ЗП.
+        """
+        detail = self._extract_event_data(await self.get_event_detail(event_id, verbose=verbose))
+        if not detail:
+            return None, 404
+        if detail.get("isCompleted") is False:
+            return detail, 200
 
-        return updated, 502
+        if verbose:
+            print(
+                f"[Optimate] mark_event_not_held #{event_id} reason={cancellation_reason}: "
+                f"not available in Public API ({OPTIMATE_PUBLIC_API_DOCS})"
+            )
+        return {
+            "success": False,
+            "message": "Public API does not expose lesson not-held marking",
+        }, 501
 
     async def get_group_students(
         self,

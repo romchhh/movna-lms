@@ -412,10 +412,16 @@ async def complete_teacher_event(
     )
     synced = await sync_event_completed_in_optimate(event_id)
     invalidate_teacher_cache(teacher_id)
+    message = "Урок відмічено як проведений"
+    if not synced:
+        message += (
+            ". Optimate не підтвердив зміну через Public API — "
+            "для нарахування ЗП відмітьте урок також в Opti або зверніться до адміністратора"
+        )
     return TeacherEventActionOut(
         ok=True,
         event_id=event_id,
-        message="Урок відмічено як проведений",
+        message=message,
         optimate_synced=synced,
     )
 
@@ -443,10 +449,16 @@ async def mark_teacher_event_not_held(
     )
     synced = await sync_event_not_held_in_optimate(event_id, body.reason_code)
     invalidate_teacher_cache(teacher_id)
+    message = "Заняття відмічено як таке, що не відбулось"
+    if not synced:
+        message += (
+            ". Optimate не підтвердив зміну через Public API — "
+            "для коректного нарахування ЗП відмітьте урок також в Opti або зверніться до адміністратора"
+        )
     return TeacherEventActionOut(
         ok=True,
         event_id=event_id,
-        message="Заняття відмічено як таке, що не відбулось",
+        message=message,
         optimate_synced=synced,
     )
 

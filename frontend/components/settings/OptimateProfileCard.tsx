@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState, type CSSProperties } from 'react'
 import { BirthDateFields } from '@/components/settings/BirthDateFields'
 import { ProfileAvatarEditor } from '@/components/settings/ProfileAvatarEditor'
-import { Card } from '@/components/shared/UI'
+import { Card, Empty } from '@/components/shared/UI'
 import {
   optimateApi,
   profileInitials,
@@ -165,7 +165,7 @@ export function OptimateProfileCard({ role }: { role: Role }) {
   if (loading) {
     return (
       <Card title={title}>
-        <p style={{ fontSize: 13, color: 'var(--tx2)' }}>Завантаження профілю…</p>
+        <Empty label="Завантаження профілю…" />
       </Card>
     )
   }

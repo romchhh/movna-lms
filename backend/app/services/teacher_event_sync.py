@@ -179,12 +179,14 @@ async def get_cancellations_map(
 
 
 async def sync_event_completed_in_optimate(event_id: str) -> bool:
+    """Sync to Optimate if Public API supports it (currently only read-back if already completed)."""
     client = get_optimate_client()
     _, status = await client.complete_event(event_id)
     return status == 200
 
 
 async def sync_event_not_held_in_optimate(event_id: str, reason_code: str) -> bool:
+    """Sync to Optimate if Public API supports not-held marking (not in Public API docs yet)."""
     optimate_reason = not_held_optimate_reason(reason_code)
     if optimate_reason is None:
         return False

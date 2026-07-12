@@ -1,5 +1,6 @@
 import './globals.css'
 import { AuthSessionBoot } from '@/components/auth/AuthSessionBoot'
+import { AppBootSplash } from '@/components/shared/AppBootSplash'
 import { PwaInstallProvider } from '@/components/pwa/PwaInstallProvider'
 import { PwaRegister } from '@/components/pwa/PwaRegister'
 import type { Metadata, Viewport } from 'next'
@@ -35,6 +36,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="uk">
       <body>
         <PwaInstallProvider>
+          <AppBootSplash />
           <AuthSessionBoot />
           <PwaRegister />
           {children}

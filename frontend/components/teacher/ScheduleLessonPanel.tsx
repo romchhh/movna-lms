@@ -9,6 +9,7 @@ import {
   type TeacherStudent,
   teacherOptimateApi,
 } from '@/lib/teacher-optimate-api'
+import { optimatePortalHomeUrl } from '@/lib/optimate-portal'
 import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
 
 interface ScheduleLessonPanelProps {
@@ -275,15 +276,16 @@ export function TeacherMarkLessonDialog({
   eventId: string
   eventTitle: string
   onClose: () => void
-  onCompleted: () => Promise<void>
+  onCompleted: (result: { optimate_synced: boolean }) => Promise<void>
 }) {
-  const [step, setStep] = useState<'choose' | 'reason'>('choose')
+  const [step, setStep] = useState<'choose' | 'reason' | 'done'>('choose')
   const [reasons, setReasons] = useState<LessonNotHeldReason[]>([])
   const [reasonCode, setReasonCode] = useState('')
   const [note, setNote] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
+  const [needsOptiMark, setNeedsOptiMark] = useState(false)
 
   useEffect(() => {
     if (!open) return
@@ -291,6 +293,7 @@ export function TeacherMarkLessonDialog({
     setError('')
     setSuccess('')
     setNote('')
+    setNeedsOptiMark(false)
     teacherOptimateApi.notHeldReasons()
       .then(items => {
         setReasons(items)
@@ -301,15 +304,24 @@ export function TeacherMarkLessonDialog({
 
   if (!open) return null
 
+  async function finishMark(optimate_synced: boolean) {
+    await onCompleted({ optimate_synced })
+    if (optimate_synced) {
+      onClose()
+    }
+  }
+
   async function markCompleted() {
     if (!eventId) return
     setSubmitting(true)
     setError('')
     try {
       const res = await teacherOptimateApi.completeEvent(eventId)
-      setSuccess(res.message + (res.optimate_synced === false ? ' (збережено в LMS)' : ''))
-      await onCompleted()
-      onClose()
+      const synced = res.optimate_synced !== false
+      setSuccess(res.message)
+      setNeedsOptiMark(!synced)
+      setStep('done')
+      await finishMark(synced)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Помилка')
     } finally {
@@ -330,9 +342,11 @@ export function TeacherMarkLessonDialog({
         reason_code: reasonCode,
         note,
       })
-      setSuccess(res.message + (res.optimate_synced === false ? ' (збережено в LMS)' : ''))
-      await onCompleted()
-      onClose()
+      const synced = res.optimate_synced !== false
+      setSuccess(res.message)
+      setNeedsOptiMark(!synced)
+      setStep('done')
+      await finishMark(synced)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Помилка')
     } finally {
@@ -361,7 +375,7 @@ export function TeacherMarkLessonDialog({
                 onClick={markCompleted}
               >
                 <span className="schedule-mark-option-title">Проведене заняття</span>
-                <span className="schedule-mark-option-sub">Урок відбувся, нарахування ЗП</span>
+                <span className="schedule-mark-option-sub">Зберегти в LMS (для ЗП — також в Optimate)</span>
               </button>
               <button
                 type="button"
@@ -373,7 +387,7 @@ export function TeacherMarkLessonDialog({
                 <span className="schedule-mark-option-sub">Потрібна причина</span>
               </button>
             </div>
-          ) : (
+          ) : step === 'reason' ? (
             <>
               <p className="schedule-mark-reasons-label">Будь ласка, вкажіть причину</p>
               <div className="schedule-mark-reasons">
@@ -402,6 +416,26 @@ export function TeacherMarkLessonDialog({
                 onChange={e => setNote(e.target.value)}
               />
             </>
+          ) : (
+            <div className="schedule-mark-done">
+              <p style={{ margin: '0 0 12px', fontSize: 14 }}>{success}</p>
+              {needsOptiMark && (
+                <div className="alert" style={{ marginBottom: 12 }}>
+                  <strong>Для нарахування ЗП</strong> відмітьте це заняття в Optimate — Public API
+                  поки не синхронізує проведення з LMS.
+                </div>
+              )}
+              {needsOptiMark && (
+                <a
+                  href={optimatePortalHomeUrl()}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="btn btn-primary btn-full"
+                >
+                  Відкрити Optimate
+                </a>
+              )}
+            </div>
           )}
 
           {error && <div className="alert" style={{ marginTop: 12 }}>{error}</div>}
@@ -412,7 +446,7 @@ export function TeacherMarkLessonDialog({
               <button type="button" className="btn btn-secondary" onClick={() => setStep('choose')}>
                 Назад
               </button>
-            ) : (
+            ) : step === 'done' ? null : (
               <button type="button" className="btn btn-secondary" onClick={onClose}>
                 Скасувати
               </button>
@@ -420,6 +454,11 @@ export function TeacherMarkLessonDialog({
             {step === 'reason' && (
               <button type="button" className="btn btn-primary" disabled={submitting} onClick={markNotHeld}>
                 {submitting ? 'Збереження…' : 'Підтвердити'}
+              </button>
+            )}
+            {step === 'done' && (
+              <button type="button" className="btn btn-primary" onClick={onClose}>
+                Закрити
               </button>
             )}
           </div>

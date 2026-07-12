@@ -16,6 +16,7 @@ import {
 } from '@/lib/teacher-optimate-api'
 import { mapOptimateEventToCalendar } from '@/lib/calendar-types'
 import type { CalendarEvent } from '@/lib/calendar-types'
+import { optimatePortalHomeUrl } from '@/lib/optimate-portal'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 
 export default function TeacherSchedulePage() {
@@ -26,6 +27,7 @@ export default function TeacherSchedulePage() {
   const [createOpen, setCreateOpen] = useState(false)
   const [cancelEvent, setCancelEvent] = useState<CalendarEvent | null>(null)
   const [markEvent, setMarkEvent] = useState<CalendarEvent | null>(null)
+  const [optiSyncNotice, setOptiSyncNotice] = useState('')
 
   const load = useCallback(async (refresh = false) => {
     setLoading(true)
@@ -73,13 +75,21 @@ export default function TeacherSchedulePage() {
       />
 
       {error && <div className="alert">{error}</div>}
+      {optiSyncNotice && (
+        <div className="alert" style={{ marginBottom: 12 }}>
+          {optiSyncNotice}{' '}
+          <a href={optimatePortalHomeUrl()} target="_blank" rel="noopener noreferrer">
+            Відкрити Optimate →
+          </a>
+        </div>
+      )}
 
       <div className="schedule-page-hero">
         <div className="schedule-page-hero-copy">
           <h2 className="schedule-page-hero-title">Плануйте уроки прямо тут</h2>
           <p className="schedule-page-hero-text">
-            Оберіть учня, дату та час — урок одразу потрапить у Optimate. Скасування з причиною
-            зберігається в LMS.
+            Оберіть учня, дату та час — урок одразу потрапить у Optimate. Після проведення уроку
+            відмітьте «Проведене заняття» або «Заняття не відбулось» з причиною.
           </p>
         </div>
         <button type="button" className="btn btn-primary schedule-page-hero-btn" onClick={() => setCreateOpen(true)}>
@@ -136,7 +146,14 @@ export default function TeacherSchedulePage() {
         eventId={markEvent?.id || ''}
         eventTitle={markEvent?.title || 'Урок'}
         onClose={() => setMarkEvent(null)}
-        onCompleted={async () => {
+        onCompleted={async ({ optimate_synced }) => {
+          if (!optimate_synced) {
+            setOptiSyncNotice(
+              'Відмітку збережено в LMS. Для нарахування ЗП відмітьте заняття в Optimate (галочка «Проведене заняття»).',
+            )
+          } else {
+            setOptiSyncNotice('')
+          }
           setMarkEvent(null)
           await load(true)
         }}
