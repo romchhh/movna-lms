@@ -784,7 +784,7 @@ async def get_cached_teacher_student_detail(
         return enrich_teacher_student_detail(data)
 
     return await optimate_cache.get_or_fetch(
-        f"{_teacher_prefix(teacher_id)}student:{student_id}:v3",
+        f"{_teacher_prefix(teacher_id)}student:{student_id}:v4",
         settings.OPTIMATE_CACHE_TEACHER_EVENTS_TTL,
         fetch,
         force_refresh=force_refresh,

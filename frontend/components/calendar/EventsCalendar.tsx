@@ -1,7 +1,6 @@
 'use client'
 
 import { OptimateEntityModal } from '@/components/admin/OptimateEntityModal'
-import { TeacherStudentDetailModal } from '@/components/teacher/TeacherStudentDetailModal'
 import { StatusBadge } from '@/components/shared/StatusBadge'
 import { Badge } from '@/components/shared/UI'
 import { IconButton, ChevronLeftIcon, ChevronRightIcon } from '@/components/shared/Icons'
@@ -46,6 +45,8 @@ import {
   toDateKey,
 } from '@/lib/calendar-utils'
 import { isEventActive } from '@/lib/optimate-api'
+import { teacherStudentPagePath } from '@/lib/teacher-student-routes'
+import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
 
 interface EventsCalendarProps {
@@ -520,6 +521,7 @@ export function EventsCalendar({
   enableTeacherMarking = false,
   onTeacherMark,
 }: EventsCalendarProps) {
+  const router = useRouter()
   const today = startOfDay(new Date())
   const [view, setView] = useState<CalendarViewMode>(defaultView)
   const [anchor, setAnchor] = useState(today)
@@ -569,6 +571,10 @@ export function EventsCalendar({
   function openParticipant(participant: CalendarParticipant) {
     if (!entityLinks || !participant.id) return
     if (entityLinks === 'teacher' && participant.kind !== 'student') return
+    if (entityLinks === 'teacher' && participant.kind === 'student') {
+      router.push(teacherStudentPagePath(participant.id))
+      return
+    }
     setEntityKind(participant.kind)
     setEntityId(participant.id)
     setEntityTitle(participant.name)
@@ -780,15 +786,6 @@ export function EventsCalendar({
           onTeacherMark?.(ev)
         }}
       />
-
-      {entityLinks === 'teacher' && entityKind === 'student' && (
-        <TeacherStudentDetailModal
-          studentId={entityId}
-          title={entityTitle || undefined}
-          onClose={closeEntity}
-          overlayClassName="optimate-modal-overlay--above-cal"
-        />
-      )}
 
       {entityLinks && !(entityLinks === 'teacher' && entityKind === 'student') && (
         <OptimateEntityModal

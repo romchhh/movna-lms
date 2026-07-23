@@ -55,7 +55,9 @@ STUDENT_DETAIL_INCLUDE = (
 TEACHER_LIST_INCLUDE = "contacts,stats,products,products.financial"
 TEACHER_DETAIL_INCLUDE = "contacts,stats,teacherAccess,products,products.financial"
 TEACHER_STUDENTS_INCLUDE = "contacts,products,products.financial,products.teachers,teachers"
-TEACHER_STUDENT_DETAIL_INCLUDE = "contacts,products,products.financial,products.teachers,teachers"
+TEACHER_STUDENT_DETAIL_INCLUDE = (
+    "contacts,products,products.financial,products.teachers,teachers,notes"
+)
 EVENT_LIST_INCLUDE = "students,products,teachers"
 
 GROUP_STATUS_LABELS: dict[int, str] = {

@@ -1,21 +1,21 @@
 'use client'
 
-import { TeacherStudentDetailModal } from '@/components/teacher/TeacherStudentDetailModal'
 import { StatusBadge } from '@/components/shared/StatusBadge'
 import { UserAvatar } from '@/components/shared/UserAvatar'
 import { Card, Empty, PageHeader } from '@/components/shared/UI'
 import { useLmsProfiles } from '@/hooks/useLmsProfiles'
 import { groupStatusMeta } from '@/lib/status-ui'
 import { TeacherGroup, teacherOptimateApi } from '@/lib/teacher-optimate-api'
+import { teacherStudentPagePath } from '@/lib/teacher-student-routes'
+import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 
 export default function TeacherGroups() {
+  const router = useRouter()
   const [groups, setGroups] = useState<TeacherGroup[]>([])
   const [total, setTotal] = useState(0)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-  const [selectedId, setSelectedId] = useState<string | null>(null)
-  const [selectedTitle, setSelectedTitle] = useState('')
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -46,9 +46,8 @@ export default function TeacherGroups() {
   )
   useLmsProfiles(allStudentIds)
 
-  function openStudent(id: string, name: string) {
-    setSelectedId(id)
-    setSelectedTitle(name)
+  function openStudent(id: string) {
+    router.push(teacherStudentPagePath(id))
   }
 
   return (
@@ -108,7 +107,7 @@ export default function TeacherGroups() {
                 key={student.id}
                 type="button"
                 className="teacher-group-students-row teacher-group-students-row--clickable"
-                onClick={() => openStudent(student.id, student.full_name)}
+                onClick={() => openStudent(student.id)}
               >
                 <div className="teacher-students-main">
                   <UserAvatar name={student.full_name} optimateId={student.id} size="lg" kind="student" />
@@ -134,15 +133,6 @@ export default function TeacherGroups() {
           </div>
         </Card>
       ))}
-
-      <TeacherStudentDetailModal
-        studentId={selectedId}
-        title={selectedTitle}
-        onClose={() => {
-          setSelectedId(null)
-          setSelectedTitle('')
-        }}
-      />
     </>
   )
 }

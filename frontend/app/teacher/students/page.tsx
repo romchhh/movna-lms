@@ -1,7 +1,6 @@
 'use client'
 
 import { TeacherStudentCardActions } from '@/components/teacher/TeacherStudentCardActions'
-import { TeacherStudentDetailModal } from '@/components/teacher/TeacherStudentDetailModal'
 import { FilterChipBar } from '@/components/shared/FilterChipBar'
 import { StatusBadge } from '@/components/shared/StatusBadge'
 import { UserAvatar } from '@/components/shared/UserAvatar'
@@ -9,6 +8,8 @@ import { Card, Empty, PageHeader, Pagination } from '@/components/shared/UI'
 import { useDebouncedValue } from '@/hooks/useDebouncedValue'
 import { useLmsProfiles } from '@/hooks/useLmsProfiles'
 import { TeacherStudent, teacherOptimateApi } from '@/lib/teacher-optimate-api'
+import { teacherStudentPagePath } from '@/lib/teacher-student-routes'
+import Link from 'next/link'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 
 const PAGE_SIZE = 50
@@ -33,8 +34,6 @@ export default function TeacherStudentsPage() {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-  const [selectedId, setSelectedId] = useState<string | null>(null)
-  const [selectedTitle, setSelectedTitle] = useState('')
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -79,11 +78,6 @@ export default function TeacherStudentsPage() {
 
   const studentIds = useMemo(() => filtered.map(s => s.id), [filtered])
   useLmsProfiles(studentIds)
-
-  function openStudent(student: TeacherStudent) {
-    setSelectedId(student.id)
-    setSelectedTitle(student.full_name)
-  }
 
   return (
     <>
@@ -137,10 +131,9 @@ export default function TeacherStudentsPage() {
 
         {!loading && filtered.map(student => (
           <div key={student.id} className="teacher-students-row">
-            <button
-              type="button"
+            <Link
+              href={teacherStudentPagePath(student.id)}
               className="teacher-students-row-main teacher-students-row--clickable"
-              onClick={() => openStudent(student)}
             >
               <div className="teacher-students-main">
                 <UserAvatar name={student.full_name} optimateId={student.id} size="lg" kind="student" />
@@ -158,7 +151,7 @@ export default function TeacherStudentsPage() {
                   </div>
                 </div>
               </div>
-            </button>
+            </Link>
             <div>
               <StatusBadge label={student.skill_level_label || '—'} variant="purple" emoji="📊" />
             </div>
@@ -192,12 +185,6 @@ export default function TeacherStudentsPage() {
       </Card>
 
       <Pagination page={page} pageSize={PAGE_SIZE} total={total} onPageChange={setPage} />
-
-      <TeacherStudentDetailModal
-        studentId={selectedId}
-        title={selectedTitle}
-        onClose={() => setSelectedId(null)}
-      />
     </>
   )
 }

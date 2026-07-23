@@ -25,6 +25,7 @@ type WizardStep = 'student' | 'lesson'
 interface HomeworkCreateWizardProps {
   onClose: () => void
   onSaved: () => void
+  initialStudent?: Pick<TeacherStudent, 'id' | 'full_name'>
 }
 
 function eventHasStudent(event: CalendarEvent, studentId: string): boolean {
@@ -39,15 +40,31 @@ function studentSubmission(
   return assignment?.submissions.find(s => s.student_optimate_id === studentId)
 }
 
-export function HomeworkCreateWizard({ onClose, onSaved }: HomeworkCreateWizardProps) {
-  const [step, setStep] = useState<WizardStep>('student')
+export function HomeworkCreateWizard({ onClose, onSaved, initialStudent }: HomeworkCreateWizardProps) {
+  const [step, setStep] = useState<WizardStep>(initialStudent ? 'lesson' : 'student')
   const [studentSearch, setStudentSearch] = useState('')
   const debouncedSearch = useDebouncedValue(studentSearch)
   const [students, setStudents] = useState<TeacherStudent[]>([])
   const [studentsLoading, setStudentsLoading] = useState(true)
   const [eventsLoading, setEventsLoading] = useState(false)
   const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([])
-  const [selectedStudent, setSelectedStudent] = useState<TeacherStudent | null>(null)
+  const [selectedStudent, setSelectedStudent] = useState<TeacherStudent | null>(() => {
+    if (!initialStudent) return null
+    return {
+      id: initialStudent.id,
+      full_name: initialStudent.full_name,
+      status: 1,
+      status_label: '',
+      remaining_lessons: 0,
+      lessons_total: 0,
+      lessons_used: 0,
+      planned_lessons: 0,
+      completed_lessons: 0,
+      is_speaking_club_only: false,
+      product_names: [],
+      products: [],
+    }
+  })
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null)
   const [existing, setExisting] = useState<HomeworkAssignment | null>(null)
   const [assignmentsByEvent, setAssignmentsByEvent] = useState<Map<string, HomeworkAssignment>>(new Map())
@@ -190,16 +207,18 @@ export function HomeworkCreateWizard({ onClose, onSaved }: HomeworkCreateWizardP
 
           {step === 'lesson' && selectedStudent && (
             <>
-              <button
-                type="button"
-                className="btn btn-sm btn-secondary"
-                onClick={() => {
-                  setStep('student')
-                  setSelectedStudent(null)
-                }}
-              >
-                ← Інший учень
-              </button>
+              {!initialStudent && (
+                <button
+                  type="button"
+                  className="btn btn-sm btn-secondary"
+                  onClick={() => {
+                    setStep('student')
+                    setSelectedStudent(null)
+                  }}
+                >
+                  ← Інший учень
+                </button>
+              )}
               {eventsLoading && <Empty label="Завантаження уроків..." />}
               {!eventsLoading && studentLessons.length === 0 && (
                 <Empty label="Уроків з цим учнем не знайдено за останні 90 днів" />

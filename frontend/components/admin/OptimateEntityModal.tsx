@@ -1,11 +1,10 @@
 'use client'
 
+import { OptimateStudentProfileSections } from '@/components/admin/OptimateStudentProfileSections'
 import { StatusBadge } from '@/components/shared/StatusBadge'
-import { Badge } from '@/components/shared/UI'
 import { CacheMeta, formatCacheAge, formatKyivDateTime } from '@/lib/optimate-api'
-import { ProductSummary, stripHtml, zipStudentTeachers } from '@/lib/admin-optimate-api'
+import { ProductSummary, stripHtml } from '@/lib/admin-optimate-api'
 import { PortalLoginPasswordPanel } from '@/components/admin/PortalLoginPasswordPanel'
-import { OptimateNotesList } from '@/components/admin/OptimateNotesList'
 import { TeacherLessonStatsPanel } from '@/components/teacher/TeacherLessonStatsPanel'
 import { TeacherSalariesPanel } from '@/components/teacher/TeacherSalariesPanel'
 import { CloseIcon, IconButton, RefreshIcon } from '@/components/shared/Icons'
@@ -146,13 +145,6 @@ export function OptimateEntityModal({
     : undefined
   const productsSummary = (data?.products_summary as ProductSummary[] | undefined) ?? []
   const contacts = (data?.contacts as { type: string; value: string }[] | undefined) ?? []
-  const studentTeachers = kind === 'student' && data
-    ? zipStudentTeachers({
-        teacher_ids: data.teacher_ids as string[] | undefined,
-        teacher_names: data.teacher_names as string[] | undefined,
-      })
-    : []
-  const notes = (data?.notes as unknown[] | undefined) ?? []
   const stats = (data?.stats as Record<string, unknown> | undefined) ?? {}
   const birthDate = data?.birth_date as { day?: number; month?: number; year?: number } | undefined
 
@@ -240,6 +232,16 @@ export function OptimateEntityModal({
 
           {data && (
             <>
+              {kind === 'student' ? (
+                <OptimateStudentProfileSections
+                  data={data}
+                  entityId={resolvedEntityId!}
+                  audience={audience}
+                  onTeacherClick={onTeacherClick}
+                  showNotes={audience === 'admin'}
+                />
+              ) : (
+                <>
               <DetailSection title="Основне">
                 <div className="optimate-detail-grid">
                   <KeyValue label="ID" value={String(data.id ?? '')} />
@@ -249,35 +251,17 @@ export function OptimateEntityModal({
                       status={Number(data.status ?? 0)}
                     />
                   } />
-                  {kind === 'student' && (
-                    <>
-                      <KeyValue label="Рівень" value={String(data.skill_level_label ?? '—')} />
-                      <KeyValue label="Дитина" value={data.is_child ? 'Так' : 'Ні'} />
-                      <KeyValue label="Залишок уроків" value={String(data.remaining_lessons ?? 0)} />
-                      <KeyValue label="Заплановано" value={String(data.planned_lessons ?? 0)} />
-                      <KeyValue label="Проведено" value={String(data.completed_lessons ?? 0)} />
-                    </>
-                  )}
-                  {kind === 'teacher' && (
-                    <>
                       <KeyValue label="Учнів" value={String(data.students_count ?? stats.studentsCount ?? '—')} />
                       <KeyValue label="Неперевірених уроків" value={String(data.unmarked_lesson_count ?? stats.unmarkedLessonCount ?? '—')} />
                       <KeyValue label="Доступ" value={String(data.auth_status_label ?? '—')} />
-                    </>
-                  )}
                   {birthDate && (
                     <KeyValue
                       label="Дата народження"
                       value={`${birthDate.day ?? '?'}.${birthDate.month ?? '?'}.${birthDate.year ?? '?'}`}
                     />
                   )}
-                  {kind === 'student' && Boolean(data.chat_url) && (
-                    <KeyValue label="Чат" value={
-                      <a href={String(data.chat_url)} target="_blank" rel="noopener noreferrer">Telegram</a>
-                    } />
-                  )}
                 </div>
-                {kind === 'teacher' && Boolean(data.description) && !lmsProfile?.about_me && (
+                {Boolean(data.description) && !lmsProfile?.about_me && (
                   <p className="optimate-detail-description">{stripHtml(String(data.description))}</p>
                 )}
               </DetailSection>
@@ -300,7 +284,7 @@ export function OptimateEntityModal({
                 <ProductsTable products={productsSummary} />
               </DetailSection>
 
-              {kind === 'teacher' && (lessonStatsLoading || lessonStats) && (
+              {(lessonStatsLoading || lessonStats) && (
                 <DetailSection title="Статистика уроків">
                   <TeacherLessonStatsPanel
                     stats={lessonStats ?? null}
@@ -309,38 +293,7 @@ export function OptimateEntityModal({
                   />
                 </DetailSection>
               )}
-
-              {kind === 'student' && (
-                <DetailSection title="Викладачі">
-                  {studentTeachers.length ? (
-                    <div className="optimate-detail-tags">
-                      {studentTeachers.map(teacher => {
-                        const clickable = Boolean(onTeacherClick && teacher.id)
-                        const Tag = clickable ? 'button' : 'span'
-                        return (
-                          <Tag
-                            key={`${teacher.id}-${teacher.name}`}
-                            type={clickable ? 'button' : undefined}
-                            className={`cal-participant-chip${clickable ? ' cal-participant-chip--link' : ''}`}
-                            onClick={clickable
-                              ? () => onTeacherClick!(teacher.id, teacher.name)
-                              : undefined}
-                          >
-                            {teacher.name}
-                          </Tag>
-                        )
-                      })}
-                    </div>
-                  ) : (
-                    <p className="optimate-detail-empty">Викладачів не призначено</p>
-                  )}
-                </DetailSection>
-              )}
-
-              {audience === 'admin' && kind === 'student' && notes.length > 0 && (
-                <DetailSection title="Нотатки">
-                  <OptimateNotesList notes={notes} />
-                </DetailSection>
+                </>
               )}
 
               {extraSections}

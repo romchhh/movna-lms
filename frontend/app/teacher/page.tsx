@@ -5,7 +5,6 @@ import { HomeworkPendingAlert } from '@/components/homework/HomeworkPendingAlert
 import { PendingRequestsAlert } from '@/components/lesson-requests/PendingRequestsAlert'
 import { TeacherLessonStatsPanel } from '@/components/teacher/TeacherLessonStatsPanel'
 import { TeacherStudentCardActions } from '@/components/teacher/TeacherStudentCardActions'
-import { TeacherStudentDetailModal } from '@/components/teacher/TeacherStudentDetailModal'
 import { DashboardHero } from '@/components/shared/DashboardHero'
 import { Badge, Card, Empty, StatCard } from '@/components/shared/UI'
 import { UserAvatar } from '@/components/shared/UserAvatar'
@@ -13,7 +12,9 @@ import { useLmsProfiles } from '@/hooks/useLmsProfiles'
 import { eventDateKey, formatTimeRange } from '@/lib/calendar-utils'
 import { optimateEventToCalendarEvent } from '@/lib/optimate-api'
 import { TeacherEvent, TeacherStudent, teacherOptimateApi, type TeacherLessonStats } from '@/lib/teacher-optimate-api'
+import { teacherStudentPagePath } from '@/lib/teacher-student-routes'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 
 function isToday(iso: string) {
@@ -21,6 +22,7 @@ function isToday(iso: string) {
 }
 
 export default function TeacherDashboard() {
+  const router = useRouter()
   const [students, setStudents] = useState<TeacherStudent[]>([])
   const [studentsTotal, setStudentsTotal] = useState(0)
   const [events, setEvents] = useState<TeacherEvent[]>([])
@@ -29,8 +31,6 @@ export default function TeacherDashboard() {
   const [statsMonth, setStatsMonth] = useState<number | undefined>(undefined)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-  const [selectedId, setSelectedId] = useState<string | null>(null)
-  const [selectedTitle, setSelectedTitle] = useState('')
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -154,10 +154,7 @@ export default function TeacherDashboard() {
               <button
                 type="button"
                 className="teacher-dash-student-row"
-                onClick={() => {
-                  setSelectedId(student.id)
-                  setSelectedTitle(student.full_name)
-                }}
+                onClick={() => router.push(teacherStudentPagePath(student.id))}
               >
                 <UserAvatar name={student.full_name} optimateId={student.id} size="lg" kind="student" />
                 <div className="teacher-dash-student-body">
@@ -244,12 +241,6 @@ export default function TeacherDashboard() {
           </Card>
         </div>
       </div>
-
-      <TeacherStudentDetailModal
-        studentId={selectedId}
-        title={selectedTitle}
-        onClose={() => setSelectedId(null)}
-      />
     </div>
   )
 }

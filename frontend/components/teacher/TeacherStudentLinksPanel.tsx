@@ -88,6 +88,7 @@ export function TeacherStudentLinkModal({
         label: label.trim(),
       })
       onSaved?.()
+      window.dispatchEvent(new CustomEvent('teacher-student-links-updated'))
       onClose()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Помилка збереження')

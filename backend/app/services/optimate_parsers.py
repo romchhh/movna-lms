@@ -397,6 +397,8 @@ def enrich_teacher_student_detail(raw: dict[str, Any]) -> dict[str, Any]:
         "teacher_ids": [pair[0] for pair in teacher_pairs],
         "teacher_names": [pair[1] for pair in teacher_pairs],
         "chat_url": raw.get("chatUrl"),
+        "birth_date": raw.get("birthDate"),
+        "notes": parse_student_notes(raw.get("notes")),
     }
 
 
